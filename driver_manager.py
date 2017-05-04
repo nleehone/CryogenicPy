@@ -47,7 +47,7 @@ class DriverManager(tk.Frame):
         self.status[row] = label
 
         def spawn_proc(params):
-            self.subprocesses[row] = subprocess.Popen(['python3', instrument['driver'], json.dumps(params)])
+            self.subprocesses[row] = subprocess.Popen(['python', instrument['driver'], json.dumps(params)])
 
         button = tk.Button(self, text='Start', command=lambda: spawn_proc(instrument))
         button.grid(row=row, column=2)

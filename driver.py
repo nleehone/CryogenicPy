@@ -1,5 +1,5 @@
 import pika
-import pyvisa
+import visa
 import json
 import logging
 from threading import Thread
@@ -73,7 +73,7 @@ class PikaComponent(object):
 class Driver(object):
     """Base class for all instrument drivers"""
     def __init__(self, params):
-        rm = pyvisa.ResourceManager('@sim')
+        rm = visa.ResourceManager()
         self.resource = rm.open_resource(params['address'])
         if 'baud_rate' in params:
             self.resource.baud_rate = params['baud_rate']
@@ -81,13 +81,13 @@ class Driver(object):
             self.resource.data_bits = params['data_bits']
         if 'parity' in params:
             self.resource.parity = {
-                'odd': pyvisa.constants.Parity.odd,
-                'even': pyvisa.constants.Parity.even,
-                'none': pyvisa.constants.Parity.none
+                'odd': visa.constants.Parity.odd,
+                'even': visa.constants.Parity.even,
+                'none': visa.constants.Parity.none
             }[params['parity']]
         if 'stop_bits' in params:
             self.resource.stop_bits = {
-                'one': pyvisa.constants.StopBits.one
+                'one': visa.constants.StopBits.one
             }[params['stop_bits']]
         if 'termination' in params:
             self.resource.termination = {
