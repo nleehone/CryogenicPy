@@ -131,10 +131,7 @@ class ControllerComponent(PikaComponent):
         self.driver_channel = self.driver_connection.channel()
         self.driver_channel.basic_consume(self.driver_reply, queue='amq.rabbitmq.reply-to', no_ack=True)
 
-        #self.driver_channel.basic_publish(exchange='',
-        #                                  routing_key=self.driver_queue_name,
-        #                                  body=json.dumps({'METHOD': 'QUERY', 'CMD': 'SRDG?A'}),
-        #                                  properties=pika.BasicProperties(reply_to='amq.rabbitmq.reply-to'))
+        
         # Consume messages in a separate thread so we can do operations on the main thread
         self.logger.info("A Starting command thread")
         self.driver_thread = Thread(target=self.run_driver_channel)
