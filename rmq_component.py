@@ -10,8 +10,11 @@ LOGGER = logging.getLogger(__name__)
 
 
 class RmqComponent(object):
+    """Base class for RabbitMQ components.
+    Each component runs its own RabbitMQ connection in its own thread (RabbitMQ is NOT thread safe).
+    """
     def __init__(self):
-        self.done = False
+        self.done = False   # Flag to tell if the thread should be shut down
         thread = threading.Thread(target=self.run)
         thread.start()
 
@@ -21,13 +24,14 @@ class RmqComponent(object):
         LOGGER.info('Creating a new channel')
         self.channel = self.connection.channel()
 
+        # Initialise queues here - this is a user-supplied function
         self.init_queues()
 
         try:
             while not self.done:
                 # Process message queue events, returning as soon as possible.
-                # Issues mq_callback() when applicable.
                 self.connection.process_data_events(time_limit=0)
+                # Custom user processing code is provided by the 'process' method
                 self.process()
         finally:
             self.channel.close()
@@ -48,6 +52,7 @@ class RmqComponent(object):
 
 class RmqComponentRPC(RmqComponent):
     def direct_reply_to(self, queue_name, message):
+        """Wrapper for the basic_publish method specifically for sending a direct reply-to message"""
         self.channel.basic_publish(exchange='',
                                    routing_key=queue_name,
                                    body=message,
@@ -56,7 +61,9 @@ class RmqComponentRPC(RmqComponent):
                                    ))
 
     def init_queues(self):
+        """Create the direct-reply consumer"""
         self.channel.basic_consume(self.direct_reply, queue='amq.rabbitmq.reply-to', no_ack=True)
 
     def direct_reply(self, channel, method, properties, body):
+        """User-supplied function that processes the direct-reply events"""
         pass
