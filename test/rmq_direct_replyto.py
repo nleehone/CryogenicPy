@@ -8,7 +8,7 @@ LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
 LOGGER = logging.getLogger(__name__)
 
 
-class Producer(rmq.RmqComponent):
+class Producer(rmq.RmqComponentRPC):
     def __init__(self):
         super().__init__()
         self.count = 0
@@ -17,19 +17,13 @@ class Producer(rmq.RmqComponent):
         message = 'Some work to be done: ' + str(self.count)
 
         LOGGER.info('Sent message: ' + message)
-        self.channel.basic_publish(exchange='',
-                                   routing_key='test_queue',
-                                   body=message,
-                                   properties=pika.BasicProperties(
-                                       reply_to='amq.rabbitmq.reply-to'
-                                   ))
+        self.direct_reply_to('test_queue',
+                             message)
+
         self.count += 1
         time.sleep(1)
 
-    def init_queues(self):
-        self.channel.basic_consume(self.reply, queue='amq.rabbitmq.reply-to', no_ack=True)
-
-    def reply(self, channel, method, properties, body):
+    def direct_reply(self, channel, method, properties, body):
         LOGGER.info("Producer got back: " + str(body))
 
 

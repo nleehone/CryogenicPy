@@ -44,3 +44,19 @@ class RmqComponent(object):
 
     def process(self):
         pass
+
+
+class RmqComponentRPC(RmqComponent):
+    def direct_reply_to(self, queue_name, message):
+        self.channel.basic_publish(exchange='',
+                                   routing_key=queue_name,
+                                   body=message,
+                                   properties=pika.BasicProperties(
+                                       reply_to='amq.rabbitmq.reply-to'
+                                   ))
+
+    def init_queues(self):
+        self.channel.basic_consume(self.direct_reply, queue='amq.rabbitmq.reply-to', no_ack=True)
+
+    def direct_reply(self, channel, method, properties, body):
+        pass
