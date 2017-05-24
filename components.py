@@ -107,21 +107,3 @@ class DriverComponent(rmq.RmqComponentRPC):
                 self.logger.warning("Unrecognized METHOD: {}".format(method))
         except AttributeError:
             self.logger.warning("Invalid command: {}".format(body))
-
-
-class Driver(rmq.RmqComponentRPC):
-    def __init__(self, resource):
-        super().__init__()
-        self.resource = resource
-
-    def direct_reply(self, channel, method, properties, body):
-        body = json.loads(body)
-        try:
-            command_method = body['METHOD']
-            command = body['CMD']
-
-            if command_method == 'WRITE':
-            elif command_method == 'READ':
-            elif command_method == 'QUERY':
-                resource.
-        except AttributeError:
