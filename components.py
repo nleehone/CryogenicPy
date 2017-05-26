@@ -59,18 +59,19 @@ class Driver(object):
         return self.resource.query(msg)
 
 
-class DriverComponent(rmq.RmqComponentRPC):
+class DriverComponent(rmq.RmqComponent):
     """Single point of communication with the instrument
 
-    Having a common point of communication prevents multiple parts of the system from trying to access the hardware
-    at the same time.
+    Having a common point of communication prevents multiple parts of the system from
+    trying to access the hardware at the same time.
 
     It is up to the user to make sure that only one instance of the Driver is ever running.
     """
-    def __init__(self, params):
+    def __init__(self, driver_queue, params):
         super().__init__()
         self.setup_logger()
         self.driver = Driver(params)
+        self.driver_queue = driver_queue
 
     def setup_logger(self):
         self.logger = logging.getLogger(type(self).__name__)
@@ -85,11 +86,16 @@ class DriverComponent(rmq.RmqComponentRPC):
 
         self.logger.addHandler(handler)
 
-    def direct_reply(self, channel, method, properties, body):
-        reply = self.process_command(body)
+    def init_queues(self):
+        self.channel.queue_declare(queue=self.driver_queue)
 
-        if reply is not None:
-            self.direct_reply_to()
+    def process(self):
+        method, properties, body = self.channel.basic_get(queue=self.driver_queue,
+                                                          no_ack=True)
+        if method is not None:
+            reply = self.process_command(body)
+            if reply is not None:
+                self.channel.basic_publish('', routing_key=properties.reply_to, body=reply)
 
     def process_command(self, body):
         # METHOD: {READ, WRITE, QUERY}
