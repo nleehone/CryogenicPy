@@ -17,13 +17,13 @@ class Producer(rmq.RmqComponentRPC):
         message = 'Some work to be done: ' + str(self.count)
 
         LOGGER.info('Sent message: ' + message)
-        self.direct_reply_to('test_queue',
+        self.send_direct_message('test_queue',
                              message)
 
         self.count += 1
         time.sleep(1)
 
-    def direct_reply(self, channel, method, properties, body):
+    def process_direct_reply(self, channel, method, properties, body):
         LOGGER.info("Producer got back: " + str(body))
 
 

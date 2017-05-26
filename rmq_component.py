@@ -51,7 +51,12 @@ class RmqComponent(object):
 
 
 class RmqComponentRPC(RmqComponent):
-    def direct_reply_to(self, queue_name, message):
+    """The RmqComponentRPC class is used to send RPC messages to other RmqComponents and
+    process the returned messages.
+
+    Messages are sent via send_direct_message, and are received via process_direct_reply
+    """
+    def send_direct_message(self, queue_name, message):
         """Wrapper for the basic_publish method specifically for sending a direct reply-to message"""
         self.channel.basic_publish(exchange='',
                                    routing_key=queue_name,
@@ -62,8 +67,8 @@ class RmqComponentRPC(RmqComponent):
 
     def init_queues(self):
         """Create the direct-reply consumer"""
-        self.channel.basic_consume(self.direct_reply, queue='amq.rabbitmq.reply-to', no_ack=True)
+        self.channel.basic_consume(self.process_direct_reply, queue='amq.rabbitmq.reply-to', no_ack=True)
 
-    def direct_reply(self, channel, method, properties, body):
+    def process_direct_reply(self, channel, method, properties, body):
         """User-supplied function that processes the direct-reply events"""
         pass
