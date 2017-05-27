@@ -1,0 +1,32 @@
+spec: "1.1"
+devices:
+  LS350:
+    eom:
+      ASRL INSTR:
+        q: "\r\n"
+        r: "\n"
+      USB INSTR:
+        q: "\n"
+        r: "\n"
+      TCPIP INSTR:
+        q: "\n"
+        r: "\n"
+      GPIB INSTR:
+        q: "\n"
+        r: "\n"
+    error: ERROR
+    dialogues:
+      - q: "*CLS"
+      - q: "*RST"
+      - q: "*IDN?"
+        r: "LSCI,MODEL350,1234567/1234567,1.0"
+    properties:
+      status_byte:
+        default: 0
+        getter:
+          q: "*STB?"
+          r: "{}"
+
+resources:
+  ASRL1::INSTR:
+    device: LS350

@@ -12,7 +12,7 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 class Driver(object):
     """Base class for all instrument drivers"""
     def __init__(self, params):
-        rm = visa.ResourceManager('@sim')
+        rm = visa.ResourceManager(params.get('library', ''))
         self.resource = rm.open_resource(params['address'])
         if 'baud_rate' in params:
             self.resource.baud_rate = params['baud_rate']

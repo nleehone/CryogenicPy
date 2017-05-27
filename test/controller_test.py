@@ -15,7 +15,7 @@ LOGGER = logging.getLogger(__name__)
 
 class LS350Controller(cmp.ControllerComponent):
     def process(self):
-        message = {'METHOD': 'QUERY', 'CMD': '*IDN?'}
+        message = {'METHOD': 'QUERY', 'CMD': '*STB?'}
         self.send_direct_message(self.driver_queue, json.dumps(message))
         time.sleep(1)
 
@@ -26,7 +26,8 @@ class LS350Controller(cmp.ControllerComponent):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
-    driver = cmp.DriverComponent(driver_queue, {'address': 'ASRL2::INSTR'})
+    driver = cmp.DriverComponent(driver_queue, {'library': 'test/instruments.yaml@sim',
+                                                'address': 'ASRL1::INSTR'})
     controller = LS350Controller(driver_queue, controller_queue)
     try:
         time.sleep(10)
