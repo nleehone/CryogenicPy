@@ -12,7 +12,7 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 class Driver(object):
     """Base class for all instrument drivers"""
     def __init__(self, params):
-        rm = visa.ResourceManager()
+        rm = visa.ResourceManager('@sim')
         self.resource = rm.open_resource(params['address'])
         if 'baud_rate' in params:
             self.resource.baud_rate = params['baud_rate']
@@ -56,22 +56,14 @@ class Driver(object):
         :param msg (str): Message to be sent
         :return (str): The string with termination character stripped
         """
+        print(msg, self.resource.query(msg))
         return self.resource.query(msg)
 
 
-class DriverComponent(rmq.RmqComponent):
-    """Single point of communication with the instrument
-
-    Having a common point of communication prevents multiple parts of the system from
-    trying to access the hardware at the same time.
-
-    It is up to the user to make sure that only one instance of the Driver is ever running.
-    """
-    def __init__(self, driver_queue, params):
-        super().__init__()
+class Component(object):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.setup_logger()
-        self.driver = Driver(params)
-        self.driver_queue = driver_queue
 
     def setup_logger(self):
         self.logger = logging.getLogger(type(self).__name__)
@@ -86,6 +78,20 @@ class DriverComponent(rmq.RmqComponent):
 
         self.logger.addHandler(handler)
 
+
+class DriverComponent(rmq.RmqComponent, Component):
+    """Single point of communication with the instrument
+
+    Having a common point of communication prevents multiple parts of the system from
+    trying to access the hardware at the same time.
+
+    It is up to the user to make sure that only one instance of the Driver is ever running.
+    """
+    def __init__(self, driver_queue, driver_params, **kwargs):
+        self.driver = Driver(driver_params)
+        self.driver_queue = driver_queue
+        super().__init__(**kwargs)
+
     def init_queues(self):
         self.channel.queue_declare(queue=self.driver_queue)
 
@@ -98,6 +104,7 @@ class DriverComponent(rmq.RmqComponent):
                 self.channel.basic_publish('', routing_key=properties.reply_to, body=reply)
 
     def process_command(self, body):
+        print(body.decode('utf-8'))
         # METHOD: {READ, WRITE, QUERY}
         body = json.loads(body.decode('utf-8'))
         try:
@@ -113,3 +120,17 @@ class DriverComponent(rmq.RmqComponent):
                 self.logger.warning("Unrecognized METHOD: {}".format(method))
         except AttributeError:
             self.logger.warning("Invalid command: {}".format(body))
+
+
+class ControllerComponent(rmq.RmqComponentRPC, Component):
+    def __init__(self, driver_queue, controller_queue, **kwargs):
+        super().__init__(**kwargs)
+        self.driver_queue = driver_queue
+        self.controller_queue = controller_queue
+
+    def init_queues(self):
+        super().init_queues()
+        self.channel.queue_declare(queue=self.controller_queue)
+
+    def process(self):
+        pass

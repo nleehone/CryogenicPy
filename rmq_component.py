@@ -13,7 +13,8 @@ class RmqComponent(object):
     """Base class for RabbitMQ components.
     Each component runs its own RabbitMQ connection in its own thread (RabbitMQ is NOT thread safe).
     """
-    def __init__(self):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.done = False   # Flag to tell if the thread should be shut down
         thread = threading.Thread(target=self.run)
         thread.start()
