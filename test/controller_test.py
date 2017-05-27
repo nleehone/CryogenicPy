@@ -26,7 +26,7 @@ class LS350Controller(cmp.ControllerComponent):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
-    driver = cmp.DriverComponent(driver_queue, {'address': 'ASRL1::INSTR'})
+    driver = cmp.DriverComponent(driver_queue, {'address': 'ASRL2::INSTR'})
     controller = LS350Controller(driver_queue, controller_queue)
     try:
         time.sleep(10)
