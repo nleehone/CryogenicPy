@@ -56,7 +56,6 @@ class Driver(object):
         :param msg (str): Message to be sent
         :return (str): The string with termination character stripped
         """
-        print(msg, self.resource.query(msg))
         return self.resource.query(msg)
 
 

@@ -1,88 +1,17 @@
 spec: "1.1"
 devices:
   LS350:
-    eom:
-      ASRL INSTR:
-        q: "\r\n"
-        r: "\n"
-      USB INSTR:
-        q: "\n"
-        r: "\n"
-      TCPIP INSTR:
-        q: "\n"
-        r: "\n"
-      GPIB INSTR:
-        q: "\n"
-        r: "\n"
-    error: ERROR
-    dialogues:
-      - q: "*CLS"
-      - q: "*RST"
-      - q: "*IDN?"
-        r: "LSCI,MODEL350,1234567/1234567,1.0"
-    properties:
-      status_byte:
-        default: 0
-        getter:
-          q: "*STB?"
-          r: "{}"
-      curve_delete:
-        default: 21
-        setter:
-          q: "CRVDEL{:d}"
-        specs:
-          min: 21
-          max: 59
-          type: int
-      curve_header_set:
-        setter:
-          q: "CRVHDR {:d},{},{},{:d},{:.f},{:d}"
-    channels:
-      channel:
-        ids: ["A", "B", "C", "D", "0"]
-        properties:
-          temperature:
-            default: 300.0
-            getter:
-              q: "CRDG?{ch_id}"
-              r: "{;.3f}"
-              q: "SRDG?{ch_id}"
-              r: "{:.3f}"
-              q: "KRDG?{ch_id}"
-              r: "{:.3f}"
-            setter:
-              q:
-            specs:
-              min: 0
-              max: 400
-              type: float
-      channel:
-        ids: [1, 2, 3, 4]
-        properties:
-          temperature:
-            default: 300.0
-            getter:
-              q: "SETP?{ch_id}"
-              r: "{:3f}"
-            setter:
-              q: "SETP{ch_id},{:.3f}"
-            specs:
-              min: 0
-              max: 400
-              type: float
-      channel:
-        ids: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
-          19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36,
-          37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54,
-          55, 56, 57, 58, 59]
-        properties:
-          curve_header_get:
-            getter:
-              q: "CRVHDR?{ch_id}"
-              r: "CURVE1,SN1010,4,400.0,1"
-            setter:
-              q:
-
+    name: "LS350Device"
+    module: "controller_test"
+    class: "LS350Device"
 resources:
   ASRL1::INSTR:
+    device: LS350
+  USB::0x1111::0x2222::0x1234::INSTR:
+    device: LS350
+  TCPIP::localhost::INSTR:
+    device: LS350
+  TCPIP::localhost::10001::SOCKET:
+    device: LS350
+  GPIB::8::INSTR:
     device: LS350

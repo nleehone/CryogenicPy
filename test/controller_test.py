@@ -5,12 +5,38 @@ import time
 import json
 
 
+# Force the loading of pyvisa-mock. We need this because pyvisa-mock is not a valid identifier
+import importlib
+mock = importlib.import_module("pyvisa-mock")
+
+
 driver_queue = 'LS350.driver'
 controller_queue = 'LS350.controller'
 
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
               '-35s %(lineno) -5d: %(message)s')
 LOGGER = logging.getLogger(__name__)
+
+
+class LS350Device(mock.devices.Device):
+    def __init__(self, name, delimiter):
+        super().__init__(name, delimiter)
+        self.temp = 300
+
+    def _match(self, query):
+        """Tries to match the query to the set of commands the instrument
+        recognises
+
+        :param query: message tuple
+        :type query: Tuple[bytes]
+        :return: response if found or None
+        :rtype: Tuple[bytes] | None
+        """
+        query = query.decode('utf-8')
+        if 'SETP1,' in query:
+            self.temp = 1
+        else:
+            return bytes(str(self.temp).encode('utf-8'))
 
 
 class LS350Controller(cmp.ControllerComponent):
@@ -31,7 +57,7 @@ class LS350Controller(cmp.ControllerComponent):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
-    driver = cmp.DriverComponent(driver_queue, {'library': 'test/instruments.yaml@sim',
+    driver = cmp.DriverComponent(driver_queue, {'library': 'test/instruments.yaml@mock',
                                                 'address': 'ASRL1::INSTR'})
     controller = LS350Controller(driver_queue, controller_queue)
     try:

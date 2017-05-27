@@ -1,0 +1,3 @@
+[submodule "pyvisa-mock"]
+	path = pyvisa-mock
+	url = https://github.com/nleehone/pyvisa-sim.git
