@@ -15,7 +15,9 @@ LOGGER = logging.getLogger(__name__)
 
 class LS350Controller(cmp.ControllerComponent):
     def process(self):
-        message = {'METHOD': 'QUERY', 'CMD': '*STB?'}
+        message = {'METHOD': 'WRITE', 'CMD': 'SETP1,200'}
+        self.send_direct_message(self.driver_queue, json.dumps(message))
+        message = {'METHOD': 'QUERY', 'CMD': 'SETP?1'}
         self.send_direct_message(self.driver_queue, json.dumps(message))
         time.sleep(1)
 

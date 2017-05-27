@@ -26,7 +26,39 @@ devices:
         getter:
           q: "*STB?"
           r: "{}"
-
+    channels:
+      channel:
+        ids: ["A", "B", "C", "D", "0"]
+        properties:
+          temperature:
+            default: 300.0
+            getter:
+              q: "CRDG?{ch_id}"
+              r: "{;.3f}"
+              q: "SRDG?{ch_id}"
+              r: "{:.3f}"
+              q: "KRDG?{ch_id}"
+              r: "{:.3f}"
+            setter:
+              q:
+            specs:
+              min: 0
+              max: 400
+              type: float
+      channel:
+        ids: [1, 2, 3, 4]
+        properties:
+          temperature:
+            default: 300.0
+            getter:
+              q: "SETP?{ch_id}"
+              r: "{:3f}"
+            setter:
+              q: "SETP{ch_id},{:.3f}"
+            specs:
+              min: 0
+              max: 400
+              type: float
 resources:
   ASRL1::INSTR:
     device: LS350
