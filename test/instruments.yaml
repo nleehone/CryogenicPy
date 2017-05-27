@@ -26,6 +26,17 @@ devices:
         getter:
           q: "*STB?"
           r: "{}"
+      curve_delete:
+        default: 21
+        setter:
+          q: "CRVDEL {:d}"
+        specs:
+          min: 21
+          max: 59
+          type: int
+      curve_header:
+        setter:
+          q: "CRVHDR {},{},{},{},{},{}"
     channels:
       channel:
         ids: ["A", "B", "C", "D", "0"]
