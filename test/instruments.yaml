@@ -29,14 +29,14 @@ devices:
       curve_delete:
         default: 21
         setter:
-          q: "CRVDEL {:d}"
+          q: "CRVDEL{:d}"
         specs:
           min: 21
           max: 59
           type: int
-      curve_header:
+      curve_header_set:
         setter:
-          q: "CRVHDR {},{},{},{},{},{}"
+          q: "CRVHDR {:d},{},{},{:d},{:.f},{:d}"
     channels:
       channel:
         ids: ["A", "B", "C", "D", "0"]
@@ -70,6 +70,19 @@ devices:
               min: 0
               max: 400
               type: float
+      channel:
+        ids: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+          19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36,
+          37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54,
+          55, 56, 57, 58, 59]
+        properties:
+          curve_header_get:
+            getter:
+              q: "CRVHDR?{ch_id}"
+              r: "CURVE1,SN1010,4,400.0,1"
+            setter:
+              q:
+
 resources:
   ASRL1::INSTR:
     device: LS350
