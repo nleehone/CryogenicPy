@@ -152,7 +152,7 @@ class LS350Controller(cmp.ControllerComponent):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
-    driver = cmp.DriverComponent(driver_queue, {'library': 'test/instruments.yaml@mock',
+    driver = cmp.DriverComponent(driver_queue, {'library': 'instruments.yaml@mock',
                                                 'address': 'ASRL1::INSTR'})
     controller = LS350Controller(driver_queue, controller_queue)
     try:
