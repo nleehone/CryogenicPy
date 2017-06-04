@@ -233,13 +233,12 @@ class InstrumentFinder(tk.Frame):
 
     def find_connection_params(self, resource):
         good_connection_params = []
-        connection_params = ConnectionParams()
-        connection_params.timeout = self.timeout.get()
-
 
         for stop_bits, parity, baud_rate, data_bits, termination in itertools.product(STOP_BITS, PARITY, BAUD_RATES,
                                                                                       DATA_BITS, TERMINATION_CHAR):
             try:
+                connection_params = ConnectionParams()
+                connection_params.timeout = self.timeout.get()
                 connection_params.data_bits = data_bits
                 connection_params.parity = parity
                 connection_params.stop_bits = stop_bits
