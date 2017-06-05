@@ -69,7 +69,7 @@ class InstrumentFinder(tk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
-        self.resource_manager = pyvisa.ResourceManager('instruments.yaml@mock')
+        self.resource_manager = pyvisa.ResourceManager()
         self.instrument_list = []
         self.parity = tk.StringVar()
         self.data_bits = tk.StringVar()
