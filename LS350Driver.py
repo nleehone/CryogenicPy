@@ -1,6 +1,7 @@
 import components as cmp
 import logging
 import time
+import json
 
 driver_queue = 'LS350.driver'
 controller_queue = 'LS350.controller'
@@ -201,11 +202,39 @@ class LS350Driver(cmp.DriverComponent):
         LS350Driver.validate_input_number(pars[0])
 
 
+class LS350Controller(cmp.ControllerComponent):
+    def process(self):
+        #message = {'METHOD': 'QUERY', 'CMD': 'CRVHDR?8'}
+        #self.send_direct_message(self.driver_queue, json.dumps(message))
+        #time.sleep(1)
+        message = {'METHOD': 'QUERY', 'CMD': '*IDN?'}
+        self.send_direct_message(self.driver_queue, json.dumps(message))
+        #message = {'METHOD': 'QUERY', 'CMD': 'BRIGT?'}
+        #self.send_direct_message(self.driver_queue, json.dumps(message))
+        #message = {'METHOD': 'WRITE', 'CMD': 'BRIGT 23'}
+        #self.send_direct_message(self.driver_queue, json.dumps(message))
+        #message = {'METHOD': 'QUERY', 'CMD': 'BRIGT?'}
+        #self.send_direct_message(self.driver_queue, json.dumps(message))
+        #message = {'METHOD': 'WRITE', 'CMD': 'SETP1,200'}
+        #self.send_direct_message(self.driver_queue, json.dumps(message))
+        #message = {'METHOD': 'QUERY', 'CMD': 'SETP?1'}
+        #self.send_direct_message(self.driver_queue, json.dumps(message))
+        time.sleep(1)
+
+    def process_direct_reply(self, channel, method, properties, body):
+        LOGGER.info("Producer got back: " + str(body))
+
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
-    driver = cmp.DriverComponent(driver_queue, {'library': 'instruments.yaml@mock',
-                                                'address': 'ASRL1::INSTR'})
+    driver = cmp.DriverComponent(driver_queue, {'library': '',
+                                                'address': 'ASRL6::INSTR',
+                                                'baud_rate': 56000,
+                                                'parity': 'odd',
+                                                'data_bits': 7})
+    controller = LS350Controller(driver_queue, controller_queue)
+
     try:
         time.sleep(10)
     except KeyboardInterrupt:
@@ -213,3 +242,4 @@ if __name__ == '__main__':
     finally:
         pass
         driver.close()
+        controller.close()
