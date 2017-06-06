@@ -204,21 +204,8 @@ class LS350Driver(cmp.DriverComponent):
 
 class LS350Controller(cmp.ControllerComponent):
     def process(self):
-        #message = {'METHOD': 'QUERY', 'CMD': 'CRVHDR?8'}
-        #self.send_direct_message(self.driver_queue, json.dumps(message))
-        #time.sleep(1)
         message = {'METHOD': 'QUERY', 'CMD': LS350Driver.get_identity([])}
         self.send_direct_message(self.driver_queue, json.dumps(message))
-        #message = {'METHOD': 'QUERY', 'CMD': 'BRIGT?'}
-        #self.send_direct_message(self.driver_queue, json.dumps(message))
-        #message = {'METHOD': 'WRITE', 'CMD': 'BRIGT 23'}
-        #self.send_direct_message(self.driver_queue, json.dumps(message))
-        #message = {'METHOD': 'QUERY', 'CMD': 'BRIGT?'}
-        #self.send_direct_message(self.driver_queue, json.dumps(message))
-        #message = {'METHOD': 'WRITE', 'CMD': 'SETP1,200'}
-        #self.send_direct_message(self.driver_queue, json.dumps(message))
-        #message = {'METHOD': 'QUERY', 'CMD': 'SETP?1'}
-        #self.send_direct_message(self.driver_queue, json.dumps(message))
         time.sleep(1)
 
     def process_direct_reply(self, channel, method, properties, body):
