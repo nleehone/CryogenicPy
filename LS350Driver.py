@@ -207,7 +207,7 @@ class LS350Controller(cmp.ControllerComponent):
         #message = {'METHOD': 'QUERY', 'CMD': 'CRVHDR?8'}
         #self.send_direct_message(self.driver_queue, json.dumps(message))
         #time.sleep(1)
-        message = {'METHOD': 'QUERY', 'CMD': '*IDN?'}
+        message = {'METHOD': 'QUERY', 'CMD': LS350Driver.get_identity([])}
         self.send_direct_message(self.driver_queue, json.dumps(message))
         #message = {'METHOD': 'QUERY', 'CMD': 'BRIGT?'}
         #self.send_direct_message(self.driver_queue, json.dumps(message))
