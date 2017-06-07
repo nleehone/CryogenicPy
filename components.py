@@ -40,6 +40,9 @@ class Driver(object):
         :param msg (str): Message to be sent
         :return (int): Number of bytes written
         """
+        error = self.check_command(msg)
+        if error:
+            return None, error
         return self.resource.write(msg), None
 
     def read(self):
@@ -57,7 +60,18 @@ class Driver(object):
         :param msg (str): Message to be sent
         :return (str): The string with termination character stripped
         """
-        return self.resource.query(msg), None
+        error = self.check_command(msg)
+        if error:
+            return None, error
+        return self.process_response(self.resource.query(msg), msg)
+
+    def check_command(self, msg):
+        # Don't check the command on the base Driver
+        return None
+
+    def process_response(self, resp, msg):
+        # Pass the raw response back for the base Driver
+        return resp, None
 
 
 class Component(object):
