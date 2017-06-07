@@ -220,13 +220,13 @@ if __name__ == '__main__':
                                                 'baud_rate': 56000,
                                                 'parity': 'odd',
                                                 'data_bits': 7})
-    controller = LS350Controller(driver_queue, controller_queue)
+    #controller = LS350Controller(driver_queue, controller_queue)
 
     try:
-        time.sleep(10)
+        time.sleep(10000)
     except KeyboardInterrupt:
         pass
     finally:
         pass
         driver.close()
-        controller.close()
+        #controller.close()
