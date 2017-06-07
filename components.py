@@ -1,4 +1,5 @@
 import os
+import time
 import visa
 import json
 import rmq_component as rmq
@@ -39,7 +40,7 @@ class Driver(object):
         :param msg (str): Message to be sent
         :return (int): Number of bytes written
         """
-        return self.resource.write(msg)
+        return self.resource.write(msg), None
 
     def read(self):
         """
@@ -48,7 +49,7 @@ class Driver(object):
         Reads until the termination character is found
         :return (str): The string with termination character stripped
         """
-        return self.resource.read()
+        return self.resource.read(), None
 
     def query(self, msg):
         """
@@ -56,7 +57,7 @@ class Driver(object):
         :param msg (str): Message to be sent
         :return (str): The string with termination character stripped
         """
-        return self.resource.query(msg)
+        return self.resource.query(msg), None
 
 
 class Component(object):
@@ -98,25 +99,32 @@ class DriverComponent(rmq.RmqComponent, Component):
         method, properties, body = self.channel.basic_get(queue=self.driver_queue,
                                                           no_ack=True)
         if method is not None:
-            reply = self.process_command(body)
+            t0 = time.time()
+            result, error = self.process_command(body)
+            t1 = time.time()
+            reply = {"t0": t0,
+                     "t1": t1,
+                     "result": result,
+                     "error": error}
             if reply is not None:
-                self.channel.basic_publish('', routing_key=properties.reply_to, body=reply)
+                self.channel.basic_publish('', routing_key=properties.reply_to, body=json.dumps(reply))
 
     def process_command(self, body):
-        print(body.decode('utf-8'))
         # METHOD: {READ, WRITE, QUERY}
         body = json.loads(body.decode('utf-8'))
         try:
             method = body['METHOD']
             cmd = body['CMD']
             if method == 'WRITE':
-                self.driver.write(cmd)
+                return self.driver.write(cmd)
             elif method == 'QUERY':
-                return json.dumps(self.driver.query(cmd))
+                return self.driver.query(cmd)
             elif method == 'READ':
-                return json.dumps(self.driver.read())
+                return self.driver.read()
             else:
-                self.logger.warning("Unrecognized METHOD: {}".format(method))
+                error = "Unrecognized METHOD: {}".format(method)
+                self.logger.warning(error)
+                return None, error
         except AttributeError:
             self.logger.warning("Invalid command: {}".format(body))
 
