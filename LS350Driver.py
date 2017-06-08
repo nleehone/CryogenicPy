@@ -12,14 +12,17 @@ LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
 LOGGER = logging.getLogger(__name__)
 
 
-class LS350Driver(cmp.DriverComponent):
+class LS350Driver(cmp.Driver):
     def split_cmd(self, cmd):
         # Split the message into a command and a set of parameters
-        cmd, *pars = list(map(lambda x: x.strip(), re.split(',| |\?', cmd)))
-        return cmd, pars
+        command, *pars = list(filter(None, map(lambda x: x.strip(), re.split(',| |\?', cmd))))
+        # Put the question mark back in since it was removed in the split process
+        if "?" in cmd:
+            command += "?"
+        return command, pars
 
     def check_command(self, cmd):
-        cmd, *pars = self.split_cmd(cmd)
+        cmd, pars = self.split_cmd(cmd)
 
         try:
             {
@@ -46,14 +49,14 @@ class LS350Driver(cmp.DriverComponent):
             return e
 
     def process_response(self, response, cmd):
-        cmd, *pars = self.split_cmd(cmd)
+        cmd, pars = self.split_cmd(cmd)
         try:
             processed = {
                 "*IDN?": LS350Driver.get_identity_response,
                 "BRIGT?": LS350Driver.get_brightness_response,
                 "HTR?": LS350Driver.get_heater_output_percent_response,
                 "CRDG?": LS350Driver.get_sensor_reading_response,
-                "KRGD?": LS350Driver.get_sensor_reading_response,
+                "KRDG?": LS350Driver.get_sensor_reading_response,
                 "SRDG?": LS350Driver.get_sensor_reading_response,
                 "RANGE?": LS350Driver.get_heater_range_response,
                 "RAMP?": LS350Driver.get_ramp_parameters_response,
@@ -81,12 +84,12 @@ class LS350Driver(cmp.DriverComponent):
 
     @staticmethod
     def validate_input_number(input):
-        if input not in [1, 2, 3, 4]:
+        if int(input) not in [1, 2, 3, 4]:
             raise ValueError("Input must be one of [1, 2, 3, 4], instead got {}".format(input))
 
     @staticmethod
     def validate_heater_output(output):
-        if output not in [1, 2]:
+        if int(output) not in [1, 2]:
             raise ValueError("Heater output must be one of [1, 2], instead got {}".format(output))
 
     @staticmethod
@@ -151,10 +154,10 @@ class LS350Driver(cmp.DriverComponent):
     @staticmethod
     def get_sensor_validate(pars):
         LS350Driver.validate_num_params(pars, 1)
-        LS350Driver.validate_input(pars[0])
+        LS350Driver.validate_input_letter(pars[0])
 
     @staticmethod
-    def get_sensor_response(pars, resp):
+    def get_sensor_reading_response(pars, resp):
         return float(resp)
 
     @staticmethod
@@ -183,9 +186,10 @@ class LS350Driver(cmp.DriverComponent):
 
     @staticmethod
     def get_ramp_parameters_response(pars, resp):
-        resp = resp.split()
-        return {"On/Off": resp[0],
-                "Rate": resp[1]}
+        print(resp)
+        resp = list(map(lambda x: x.strip(), resp.split(',')))
+        return {"On/Off": int(resp[0]),
+                "Rate": float(resp[1])}
 
     @staticmethod
     def set_ramp_parameters(pars):
@@ -201,11 +205,12 @@ class LS350Driver(cmp.DriverComponent):
 
     @staticmethod
     def validate_ramp_on_off(on_or_off):
-        if on_or_off not in [0, 1]:
+        if int(on_or_off) not in [0, 1]:
             raise ValueError("Ramp mode must be either 0=Off or 1=On, instead got {}".format(on_or_off))
 
     @staticmethod
     def validate_ramp_rate(rate):
+        rate = float(rate)
         if rate < 0 or rate > 100:
             raise ValueError("Ramp rate must be between 0 and 100. 0 means infinite ramp rate.")
 
@@ -216,6 +221,7 @@ class LS350Driver(cmp.DriverComponent):
 
     @staticmethod
     def get_ramp_status_validate(pars):
+        print(pars)
         LS350Driver.validate_num_params(pars, 1)
         LS350Driver.validate_input_number(pars[0])
 
@@ -250,6 +256,8 @@ class LS350Driver(cmp.DriverComponent):
 
     @staticmethod
     def validate_heater_range(output, heater_range):
+        output = int(output)
+        heater_range = int(heater_range)
         if output in [1, 2]:
             if heater_range not in range(0, 6):
                 raise ValueError("Heater range must be an integer between 0 and 5 for outputs [1, 2], instead got {}".format(heater_range))
@@ -314,7 +322,7 @@ if __name__ == '__main__':
                                                 'address': 'ASRL6::INSTR',
                                                 'baud_rate': 56000,
                                                 'parity': 'odd',
-                                                'data_bits': 7})
+                                                'data_bits': 7}, LS350Driver)
     #controller = LS350Controller(driver_queue, controller_queue)
 
     try:
