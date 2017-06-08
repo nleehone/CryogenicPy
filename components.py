@@ -101,8 +101,8 @@ class DriverComponent(rmq.RmqComponent, Component):
 
     It is up to the user to make sure that only one instance of the Driver is ever running.
     """
-    def __init__(self, driver_queue, driver_params, **kwargs):
-        self.driver = Driver(driver_params)
+    def __init__(self, driver_queue, driver_params, driver_class, **kwargs):
+        self.driver = driver_class(driver_params)
         self.driver_queue = driver_queue
         super().__init__(**kwargs)
 
@@ -119,8 +119,9 @@ class DriverComponent(rmq.RmqComponent, Component):
             reply = {"t0": t0,
                      "t1": t1,
                      "result": result,
-                     "error": error}
-            if reply is not None:
+                     "error": error if error is not None else ""}
+            print(reply, result, error)
+            if result is not None or error is not None:
                 self.channel.basic_publish('', routing_key=properties.reply_to, body=json.dumps(reply))
 
     def process_command(self, body):
@@ -129,8 +130,10 @@ class DriverComponent(rmq.RmqComponent, Component):
         try:
             method = body['METHOD']
             cmd = body['CMD']
+            print(cmd)
             if method == 'WRITE':
-                return self.driver.write(cmd)
+                self.driver.write(cmd)
+                return None, None
             elif method == 'QUERY':
                 return self.driver.query(cmd)
             elif method == 'READ':
