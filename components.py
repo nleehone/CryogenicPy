@@ -139,9 +139,9 @@ class DriverComponent(rmq.RmqComponent, Component):
             errors = []
             for command in cmd.split(';'):
                 if method == 'WRITE':
-                    self.driver.write(cmd)
+                    self.driver.write(command)
                 elif method == 'QUERY':
-                    r, e = self.driver.query(cmd)
+                    r, e = self.driver.query(command)
                     results.append(r)
                     errors.append(e)
                 elif method == 'READ':
