@@ -305,16 +305,6 @@ class LS350Driver(cmp.Driver):
         LS350Driver.validate_input_number(pars[0])
 
 
-class LS350Controller(cmp.ControllerComponent):
-    def process(self):
-        message = {'METHOD': 'QUERY', 'CMD': LS350Driver.get_identity([])}
-        self.send_direct_message(self.driver_queue, json.dumps(message))
-        time.sleep(1)
-
-    def process_direct_reply(self, channel, method, properties, body):
-        LOGGER.info("Producer got back: " + str(body))
-
-
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
@@ -323,7 +313,6 @@ if __name__ == '__main__':
                                                 'baud_rate': 56000,
                                                 'parity': 'odd',
                                                 'data_bits': 7}, LS350Driver)
-    #controller = LS350Controller(driver_queue, controller_queue)
 
     try:
         time.sleep(10000)
@@ -332,4 +321,3 @@ if __name__ == '__main__':
     finally:
         pass
         driver.close()
-        #controller.close()
