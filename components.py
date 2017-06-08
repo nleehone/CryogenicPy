@@ -129,21 +129,28 @@ class DriverComponent(rmq.RmqComponent, Component):
         body = json.loads(body.decode('utf-8'))
         try:
             method = body['METHOD']
-            cmd = body['CMD']
-            print(cmd)
-            if method == 'WRITE':
-                self.driver.write(cmd)
-                return None, None
-            elif method == 'QUERY':
-                return self.driver.query(cmd)
-            elif method == 'READ':
-                return self.driver.read()
-            else:
+            if method not in ['WRITE', 'QUERY', 'READ']:
                 error = "Unrecognized METHOD: {}".format(method)
                 self.logger.warning(error)
                 return None, error
+
+            cmd = body['CMD']
+            results = []
+            errors = []
+            for command in cmd.split(';'):
+                if method == 'WRITE':
+                    self.driver.write(cmd)
+                elif method == 'QUERY':
+                    r, e = self.driver.query(cmd)
+                    results.append(r)
+                    errors.append(e)
+                elif method == 'READ':
+                    r, e = self.driver.read()
+                    results.append(r)
+                    errors.append(e)
+            return results, errors
         except AttributeError:
-            self.logger.warning("Invalid command: {}".format(body))
+            self.logger.warning("Invalid command format: {}".format(body))
 
 
 class ControllerComponent(rmq.RmqComponentRPC, Component):
