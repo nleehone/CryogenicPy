@@ -26,6 +26,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
                 "CRDG?": LS350Driver.get_sensor_validate,
                 "KRDG?": LS350Driver.get_sensor_validate,
                 "SRDG?": LS350Driver.get_sensor_validate,
+                "KSENS?": LS350Driver.get_sensor_validate,
                 "RANGE?": LS350Driver.get_heater_range_validate,
                 "RAMP?": LS350Driver.get_ramp_parameters_validate,
                 "RAMPST?": LS350Driver.get_ramp_status_validate,
@@ -50,6 +51,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
                 "CRDG?": LS350Driver.get_sensor_reading_response,
                 "KRDG?": LS350Driver.get_sensor_reading_response,
                 "SRDG?": LS350Driver.get_sensor_reading_response,
+                "KSENS?": LS350Driver.get_kelvin_sensor_reading_response,
                 "RANGE?": LS350Driver.get_heater_range_response,
                 "RAMP?": LS350Driver.get_ramp_parameters_response,
                 "RAMPST?": LS350Driver.get_ramp_status_response,
@@ -126,6 +128,15 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
         return float(resp)
 
     @staticmethod
+    def get_kelvin_sensor_reading(pars):
+        LS350Driver.get_sensor_validate(pars)
+        return "SRDG? {}; KRDG? {}".format(pars[0], pars[0])
+
+    @staticmethod
+    def get_kelvin_sensor_reading_response(pars, resp):
+        return list(map(float, resp.split(";")))
+
+    @staticmethod
     def get_heater_output_percent(pars):
         LS350Driver.get_heater_output_percent_validate(pars)
         return "HTR? {output}".format(*pars)
@@ -151,7 +162,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
     @staticmethod
     def get_ramp_parameters_response(pars, resp):
-        print(resp)
+        print("RESPONSE", resp)
         resp = list(map(lambda x: x.strip(), resp.split(',')))
         return {"On/Off": int(resp[0]),
                 "Rate": float(resp[1])}
@@ -192,7 +203,8 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
     @staticmethod
     def get_ramp_status_response(pars, resp):
-        return int(resp)
+        print("RESP", resp)
+        return int(resp[0])
 
     @staticmethod
     def get_heater_range(pars):
@@ -280,7 +292,7 @@ if __name__ == '__main__':
                                                 'data_bits': 7}, LS350Driver)
 
     try:
-        time.sleep(10000)
+        time.sleep(1000000)
     except KeyboardInterrupt:
         pass
     finally:
