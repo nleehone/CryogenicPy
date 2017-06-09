@@ -12,22 +12,14 @@ LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
 LOGGER = logging.getLogger(__name__)
 
 
-class LS350Driver(cmp.Driver):
-    def split_cmd(self, cmd):
-        # Split the message into a command and a set of parameters
-        command, *pars = list(filter(None, map(lambda x: x.strip(), re.split(',| |\?', cmd))))
-        # Put the question mark back in since it was removed in the split process
-        if "?" in cmd:
-            command += "?"
-        return command, pars
-
+class LS350Driver(cmp.IEEE488_2_CommonCommands):
     def check_command(self, cmd):
         cmd, pars = self.split_cmd(cmd)
 
         try:
             {
-                "*IDN?": LS350Driver.get_identity_validate,
-                "*RST": LS350Driver.reset_validate,
+                "*IDN?": LS350Driver.get_identification_validate,
+                "*RST": LS350Driver.reset_instrument_validate,
 
                 "BRIGT?": LS350Driver.get_brightness_validate,
                 "HTR?": LS350Driver.get_heater_output_percent_validate,
@@ -52,7 +44,7 @@ class LS350Driver(cmp.Driver):
         cmd, pars = self.split_cmd(cmd)
         try:
             processed = {
-                "*IDN?": LS350Driver.get_identity_response,
+                "*IDN?": LS350Driver.get_identification_response,
                 "BRIGT?": LS350Driver.get_brightness_response,
                 "HTR?": LS350Driver.get_heater_output_percent_response,
                 "CRDG?": LS350Driver.get_sensor_reading_response,
@@ -67,11 +59,6 @@ class LS350Driver(cmp.Driver):
         except Exception as e:
             return None, e
         return processed, None
-
-    @staticmethod
-    def validate_num_params(pars, num):
-        if len(pars) != num:
-            raise ValueError("Number of parameters ({}) does not match expectation ({})".format(len(pars), num))
 
     @staticmethod
     def validate_input_letter(input, include_all=True):
@@ -91,28 +78,6 @@ class LS350Driver(cmp.Driver):
     def validate_heater_output(output):
         if int(output) not in [1, 2]:
             raise ValueError("Heater output must be one of [1, 2], instead got {}".format(output))
-
-    @staticmethod
-    def get_identity(pars):
-        LS350Driver.get_identity_validate(pars)
-        return "*IDN?"
-
-    @staticmethod
-    def get_identity_validate(pars):
-        LS350Driver.validate_num_params(pars, 0)
-
-    @staticmethod
-    def get_identity_response(pars, resp):
-        return resp
-
-    @staticmethod
-    def reset(pars):
-        LS350Driver.reset_validate(pars)
-        return "*RST"
-
-    @staticmethod
-    def reset_validate(pars):
-        LS350Driver.validate_num_params(pars, 0)
 
     @staticmethod
     def get_brightness(pars):
