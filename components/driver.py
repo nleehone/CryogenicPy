@@ -115,15 +115,23 @@ class GetCommand(Command):
         return result
 
 
-def find_subclasses(cls, type):
-    return {c.cmd: c for c in cls.__subclasses__() if issubclass(c, type)}
+def find_subclasses(obj, type):
+    results = {}
+    for attrname in dir(obj.__class__):
+        o = getattr(obj, attrname)
+        try:
+            if issubclass(o, type):
+                results[o.cmd] = o
+        except TypeError:
+            pass
+    return results
 
 
 class IEEE488_2_CommonCommands(Driver):
     def __init__(self, params):
         super().__init__(params)
-        self.get_commands = find_subclasses(self.__class__, GetCommand)
-        self.set_commands = find_subclasses(self.__class__, SetCommand)
+        self.get_commands = find_subclasses(self, GetCommand)
+        self.set_commands = find_subclasses(self, SetCommand)
         self.all_commands = {**self.get_commands, **self.set_commands}
 
     def split_cmd(self, cmd):
@@ -319,7 +327,4 @@ class IEEE488_2_CommonCommands(Driver):
     @staticmethod
     def wait_validate(pars):
         validate_num_params(pars, 0)
-
-
-
 
