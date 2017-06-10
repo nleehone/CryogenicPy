@@ -89,6 +89,10 @@ class Command(object):
     type = None
 
     @classmethod
+    def calc_num_args(cls):
+        cls.num_args = len(re.findall("{(\s*)}", cls.arguments))
+
+    @classmethod
     def command(cls, pars):
         cls.validate(pars)
         return (cls.cmd + " " + cls.arguments.format(pars)).strip()
@@ -121,6 +125,7 @@ def find_subclasses(obj, type):
         o = getattr(obj, attrname)
         try:
             if issubclass(o, type):
+                o.calc_num_args()
                 results[o.cmd] = o
         except TypeError:
             pass
@@ -141,29 +146,6 @@ class IEEE488_2_CommonCommands(Driver):
         if "?" in cmd:
             command += "?"
         return command, pars
-
-    def check_command(self, cmd):
-        cmd, pars = self.split_cmd(cmd)
-        try:
-            self.all_commands[cmd].validate(pars)
-            """try:
-            {
-                "*CLS": IEEE488_2_CommonCommands.clear_status_validate,
-                "*ESE": IEEE488_2_CommonCommands.set_event_status_enable_validate,
-                "*ESE?": IEEE488_2_CommonCommands.get_event_status_enable_validate,
-                "*ESR?": IEEE488_2_CommonCommands.get_event_status_register_validate,
-                "*IDN?": IEEE488_2_CommonCommands.get_identification_validate,
-                "*OPC": IEEE488_2_CommonCommands.set_operation_complete_validate,
-                "*OPC?": IEEE488_2_CommonCommands.get_operation_complete_validate,
-                "*RST": IEEE488_2_CommonCommands.reset_instrument_validate,
-                "*SRE": IEEE488_2_CommonCommands.set_service_request_enable_validate,
-                "*SRE?": IEEE488_2_CommonCommands.get_service_request_enable_validate,
-                "*STB?": IEEE488_2_CommonCommands.get_status_byte_validate,
-                "*TST?": IEEE488_2_CommonCommands.self_test_validate,
-                "*WAI": IEEE488_2_CommonCommands.wait_validate,
-            }[cmd](pars)"""
-        except Exception as e:
-            return e
 
     def process_response(self, response, cmd):
         cmd, pars = self.split_cmd(cmd)
