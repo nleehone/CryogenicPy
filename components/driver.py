@@ -168,7 +168,7 @@ class IEEE488_2_CommonCommands(Driver):
 
     class SetEventStatusEnable(WriteCommand):
         cmd = "*ESE"
-        format = "{}"
+        arguments = "{}"
         num_args = 1
 
         @classmethod
@@ -207,7 +207,7 @@ class IEEE488_2_CommonCommands(Driver):
 
     class SetServiceRequestEnable(WriteCommand):
         cmd = "*SRE"
-        format = "{}"
+        arguments = "{}"
         num_args = 1
 
     class GetServiceRequestEnable(QueryCommand):

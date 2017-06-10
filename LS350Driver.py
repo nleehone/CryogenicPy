@@ -42,7 +42,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
     class SetBrightness(WriteCommand):
         cmd = "BRIGT"
-        format = "{}"
+        arguments = "{}"
 
         @classmethod
         def _validate(cls, pars):
@@ -51,7 +51,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
     class GetTemperatureCelsius(QueryCommand):
         cmd = "CRDG?"
-        format = "{}"
+        arguments = "{}"
 
         @classmethod
         def _validate(cls, pars):
@@ -63,7 +63,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
     class GetTemperatureKelvin(QueryCommand):
         cmd = "KRDG?"
-        format = "{}"
+        arguments = "{}"
 
         @classmethod
         def _validate(cls, pars):
@@ -75,7 +75,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
     class GetSensorReading(QueryCommand):
         cmd = "SRDG?"
-        format = "{}"
+        arguments = "{}"
 
         @classmethod
         def _validate(cls, pars):
@@ -87,7 +87,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
     class GetHeaterOutputPercent(QueryCommand):
         cmd = "HTR?"
-        format = "{}"
+        arguments = "{}"
 
         @classmethod
         def _validate(cls, pars):
@@ -99,7 +99,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
     class GetRampParameters(QueryCommand):
         cmd = "RAMP?"
-        format = "{}"
+        arguments = "{}"
 
         @classmethod
         def _validate(cls, pars):
@@ -113,7 +113,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
     class SetRampParameters(WriteCommand):
         cmd = "RAMP"
-        format = "{},{},{}"
+        arguments = "{},{},{}"
 
         @classmethod
         def _validate(cls, pars):
@@ -134,7 +134,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
     class GetRampStatus(QueryCommand):
         cmd = "RAMPST?"
-        format = "{}"
+        arguments = "{}"
 
         @classmethod
         def _validate(cls, pars):
@@ -146,7 +146,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
     class GetHeaterRange(QueryCommand):
         cmd = "RANGE?"
-        format = "{}"
+        arguments = "{}"
 
         @classmethod
         def _validate(cls, pars):
@@ -158,7 +158,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
     class SetHeaterRange(WriteCommand):
         cmd = "RANGE"
-        format = "{},{}"
+        arguments = "{},{}"
 
         @classmethod
         def _validate(cls, pars):
