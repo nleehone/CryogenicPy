@@ -55,8 +55,10 @@ class DriverComponent(rmq.RmqComponent, Component):
                      "t1": t1,
                      "result": result,
                      "error": error if error is not None else ""}
+            print(body)
             print(reply, result, error)
-            if result is not None or error is not None:
+            if result != [] or error != []:
+                print(properties.reply_to)
                 self.channel.basic_publish('', routing_key=properties.reply_to, body=json.dumps(reply))
 
     def process_command(self, body):
@@ -78,7 +80,7 @@ class DriverComponent(rmq.RmqComponent, Component):
                 elif method == 'QUERY':
                     r, e = self.driver.query(command)
                     results.append(r)
-                    errors.append(e)
+                    errors.append(e if e is not None else "")
                 elif method == 'READ':
                     r, e = self.driver.read()
                     results.append(r)

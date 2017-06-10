@@ -1,4 +1,5 @@
 import components as cmp
+from components import validate_num_params
 import logging
 import time
 import json
@@ -88,7 +89,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
     @staticmethod
     def get_brightness_validate(pars):
-        LS350Driver.validate_num_params(pars, 0)
+        validate_num_params(pars, 0)
 
     @staticmethod
     def get_brightness_response(pars, resp):
@@ -101,7 +102,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
     @staticmethod
     def set_brightness_validate(pars):
-        LS350Driver.validate_num_params(pars, 1)
+        validate_num_params(pars, 1)
 
     @staticmethod
     def get_temperature_celsius(pars):
@@ -120,7 +121,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
     @staticmethod
     def get_sensor_validate(pars):
-        LS350Driver.validate_num_params(pars, 1)
+        validate_num_params(pars, 1)
         LS350Driver.validate_input_letter(pars[0])
 
     @staticmethod
@@ -143,7 +144,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
     @staticmethod
     def get_heater_output_percent_validate(pars):
-        LS350Driver.validate_num_params(pars, 1)
+        validate_num_params(pars, 1)
         LS350Driver.validate_heater_output(pars[0])
 
     @staticmethod
@@ -157,7 +158,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
     @staticmethod
     def get_ramp_parameters_validate(pars):
-        LS350Driver.validate_num_params(pars, 1)
+        validate_num_params(pars, 1)
         LS350Driver.validate_input_number(pars[0])
 
     @staticmethod
@@ -174,7 +175,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
     @staticmethod
     def set_ramp_parameters_validate(pars):
-        LS350Driver.validate_num_params(pars, 3)
+        validate_num_params(pars, 3)
         LS350Driver.validate_input_number(pars[0])
         LS350Driver.validate_ramp_on_off(pars[1])
         LS350Driver.validate_ramp_rate(pars[2])
@@ -198,7 +199,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
     @staticmethod
     def get_ramp_status_validate(pars):
         print(pars)
-        LS350Driver.validate_num_params(pars, 1)
+        validate_num_params(pars, 1)
         LS350Driver.validate_input_number(pars[0])
 
     @staticmethod
@@ -213,7 +214,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
     @staticmethod
     def get_heater_range_validate(pars):
-        LS350Driver.validate_num_params(pars, 1)
+        validate_num_params(pars, 1)
         LS350Driver.validate_input_number(pars[0])
 
     @staticmethod
@@ -227,7 +228,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
     @staticmethod
     def set_heater_range_validate(pars):
-        LS350Driver.validate_num_params(pars, 2)
+        validate_num_params(pars, 2)
         LS350Driver.validate_input_number(pars[0])
         LS350Driver.validate_heater_range(pars[0], pars[1])
 
@@ -249,7 +250,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
     @staticmethod
     def get_reading_status_validate(pars):
-        LS350Driver.validate_num_params(pars, 1)
+        validate_num_params(pars, 1)
         # We cannot get reading status for all inputs at the same time
         LS350Driver.validate_input_letter(pars[0], include_all=False)
 
@@ -264,7 +265,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
     @staticmethod
     def get_setpoint_validate(pars):
-        LS350Driver.validate_num_params(pars, 1)
+        validate_num_params(pars, 1)
         LS350Driver.validate_input_number(pars[0])
 
     @staticmethod
@@ -278,7 +279,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
     @staticmethod
     def set_setpoint_validate(pars):
-        LS350Driver.validate_num_params(pars, 2)
+        validate_num_params(pars, 2)
         LS350Driver.validate_input_number(pars[0])
 
 
