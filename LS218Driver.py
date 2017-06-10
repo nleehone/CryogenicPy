@@ -17,8 +17,11 @@ class LS218Driver(cmp.IEEE488_2_CommonCommands):
     @staticmethod
     def validate_input_number(input, include_all=False):
         min = 0 if include_all else 1
-        if int(input) not in range(min, 9):
-            raise ValueError("Input must be one of {}, instead got {}".format(range(min, 9), input))
+        try:
+            if int(input) not in range(min, 9):
+                raise ValueError("Input must be one of {}, instead got {}".format(range(min, 9), input))
+        except ValueError as e:
+            raise ValueError("Input must be an integer between 0 and 9, instead got {}".format(input))
 
     class GetSensorReading(QueryCommand):
         cmd = "SRDG?"
@@ -26,11 +29,12 @@ class LS218Driver(cmp.IEEE488_2_CommonCommands):
 
         @classmethod
         def _validate(cls, pars):
-            LS218Driver.validate_input_number(pars[0])
+            LS218Driver.validate_input_number(pars[0], include_all=True)
 
         @classmethod
         def result(cls, pars, result):
-            if pars[0] == 0:
+            print(result, pars)
+            if int(pars[0]) == 0:
                 return list(map(lambda x: float(x), result.split(',')))
             else:
                 return float(result)

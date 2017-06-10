@@ -147,6 +147,13 @@ class IEEE488_2_CommonCommands(Driver):
             command += "?"
         return command, pars
 
+    def check_command(self, cmd):
+        cmd, pars = self.split_cmd(cmd)
+        try:
+            self.all_commands[cmd].validate(pars)
+        except Exception as e:
+            return e
+
     def process_response(self, response, cmd):
         cmd, pars = self.split_cmd(cmd)
         try:

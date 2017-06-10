@@ -3,6 +3,7 @@ import time
 import json
 from . import rmq_component as rmq
 import logging
+import traceback
 
 
 # Get the directory's full path
@@ -54,11 +55,11 @@ class DriverComponent(rmq.RmqComponent, Component):
             reply = {"t0": t0,
                      "t1": t1,
                      "result": result,
-                     "error": error if error is not None else ""}
+                     "error": ["".join(traceback.format_exception(etype=type(e),value=e,tb=e.__traceback__)) for e in error if e] if error is not None else ""}
             print(body)
             print(reply, result, error)
             if result != [] or error != []:
-                print(properties.reply_to)
+                print(properties.reply_to, reply)
                 self.channel.basic_publish('', routing_key=properties.reply_to, body=json.dumps(reply))
 
     def process_command(self, body):
