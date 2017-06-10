@@ -1,5 +1,5 @@
 import components as cmp
-from components import validate_num_params
+from components import QueryCommand, WriteCommand
 import logging
 import time
 import json
@@ -14,55 +14,6 @@ LOGGER = logging.getLogger(__name__)
 
 
 class LS350Driver(cmp.IEEE488_2_CommonCommands):
-    def check_command(self, cmd):
-        cmd, pars = self.split_cmd(cmd)
-
-        try:
-            {
-                "*IDN?": LS350Driver.get_identification_validate,
-                "*RST": LS350Driver.reset_instrument_validate,
-
-                "BRIGT?": LS350Driver.get_brightness_validate,
-                "HTR?": LS350Driver.get_heater_output_percent_validate,
-                "CRDG?": LS350Driver.get_sensor_validate,
-                "KRDG?": LS350Driver.get_sensor_validate,
-                "SRDG?": LS350Driver.get_sensor_validate,
-                "KSENS?": LS350Driver.get_sensor_validate,
-                "RANGE?": LS350Driver.get_heater_range_validate,
-                "RAMP?": LS350Driver.get_ramp_parameters_validate,
-                "RAMPST?": LS350Driver.get_ramp_status_validate,
-                "RDGST?": LS350Driver.get_reading_status_validate,
-                "SETP?": LS350Driver.get_setpoint_validate,
-
-                "BRIGT": LS350Driver.set_brightness_validate,
-                "RANGE": LS350Driver.set_heater_range_validate,
-                "RAMP": LS350Driver.set_ramp_parameters_validate,
-                "SETP": LS350Driver.set_setpoint_validate,
-             }[cmd](pars)
-        except Exception as e:
-            return e
-
-    def process_response(self, response, cmd):
-        cmd, pars = self.split_cmd(cmd)
-        try:
-            processed = {
-                "*IDN?": LS350Driver.get_identification_response,
-                "BRIGT?": LS350Driver.get_brightness_response,
-                "HTR?": LS350Driver.get_heater_output_percent_response,
-                "CRDG?": LS350Driver.get_sensor_reading_response,
-                "KRDG?": LS350Driver.get_sensor_reading_response,
-                "SRDG?": LS350Driver.get_sensor_reading_response,
-                "KSENS?": LS350Driver.get_kelvin_sensor_reading_response,
-                "RANGE?": LS350Driver.get_heater_range_response,
-                "RAMP?": LS350Driver.get_ramp_parameters_response,
-                "RAMPST?": LS350Driver.get_ramp_status_response,
-                "RDGST?": LS350Driver.get_reading_status_response,
-                "SETP?": LS350Driver.get_setpoint_response,
-            }[cmd](pars, response)
-        except Exception as e:
-            return None, e
-        return processed, None
-
     @staticmethod
     def validate_input_letter(input, include_all=True):
         valid = ["A", "B", "C", "D"]
@@ -82,103 +33,93 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
         if int(output) not in [1, 2]:
             raise ValueError("Heater output must be one of [1, 2], instead got {}".format(output))
 
-    @staticmethod
-    def get_brightness(pars):
-        LS350Driver.get_brightness_validate(pars)
-        return "BRIGT?"
+    class GetBrightness(QueryCommand):
+        cmd = "BRIGT?"
 
-    @staticmethod
-    def get_brightness_validate(pars):
-        validate_num_params(pars, 0)
+        @classmethod
+        def result(cls, pars, result):
+            return int(result)
 
-    @staticmethod
-    def get_brightness_response(pars, resp):
-        return int(resp)
+    class SetBrightness(WriteCommand):
+        cmd = "BRIGT"
+        format = "{}"
 
-    @staticmethod
-    def set_brightness(pars):
-        LS350Driver.set_brightness_validate(pars)
-        return "BRIGT {}".format(*pars)
+        @classmethod
+        def _validate(cls, pars):
+            if pars[0] < 1 or pars[0] > 32:
+                raise ValueError("Brightness must be between 1 and 32, instead got {}".format(pars[0]))
 
-    @staticmethod
-    def set_brightness_validate(pars):
-        validate_num_params(pars, 1)
+    class GetTemperatureCelsius(QueryCommand):
+        cmd = "CRDG?"
+        format = "{}"
 
-    @staticmethod
-    def get_temperature_celsius(pars):
-        LS350Driver.get_sensor_validate(pars)
-        return "CRDG? {}".format(*pars)
+        @classmethod
+        def _validate(cls, pars):
+            LS350Driver.validate_input_letter(pars[0])
 
-    @staticmethod
-    def get_temperature_kelvin(pars):
-        LS350Driver.get_sensor_validate(pars)
-        return "KRDG? {}".format(*pars)
+        @classmethod
+        def result(cls, pars, result):
+            return float(result)
 
-    @staticmethod
-    def get_sensor_reading(pars):
-        LS350Driver.get_sensor_validate(pars)
-        return "SRDG? {}".format(*pars)
+    class GetTemperatureKelvin(QueryCommand):
+        cmd = "KRDG?"
+        format = "{}"
 
-    @staticmethod
-    def get_sensor_validate(pars):
-        validate_num_params(pars, 1)
-        LS350Driver.validate_input_letter(pars[0])
+        @classmethod
+        def _validate(cls, pars):
+            LS350Driver.validate_input_letter(pars[0])
 
-    @staticmethod
-    def get_sensor_reading_response(pars, resp):
-        return float(resp)
+        @classmethod
+        def result(cls, pars, result):
+            return float(result)
 
-    @staticmethod
-    def get_kelvin_sensor_reading(pars):
-        LS350Driver.get_sensor_validate(pars)
-        return "SRDG? {}; KRDG? {}".format(pars[0], pars[0])
+    class GetSensorReading(QueryCommand):
+        cmd = "SRDG?"
+        format = "{}"
 
-    @staticmethod
-    def get_kelvin_sensor_reading_response(pars, resp):
-        return list(map(float, resp.split(";")))
+        @classmethod
+        def _validate(cls, pars):
+            LS350Driver.validate_input_letter(pars[0])
 
-    @staticmethod
-    def get_heater_output_percent(pars):
-        LS350Driver.get_heater_output_percent_validate(pars)
-        return "HTR? {output}".format(*pars)
+        @classmethod
+        def result(cls, pars, result):
+            return float(result)
 
-    @staticmethod
-    def get_heater_output_percent_validate(pars):
-        validate_num_params(pars, 1)
-        LS350Driver.validate_heater_output(pars[0])
+    class GetHeaterOutputPercent(QueryCommand):
+        cmd = "HTR?"
+        format = "{}"
 
-    @staticmethod
-    def get_heater_output_percent_response(pars, resp):
-        return float(resp)
+        @classmethod
+        def _validate(cls, pars):
+            LS350Driver.validate_heater_output(pars[0])
 
-    @staticmethod
-    def get_ramp_parameters(pars):
-        LS350Driver.get_ramp_parameters_validate(pars)
-        return "RAMP? {}".format(*pars)
+        @classmethod
+        def result(cls, pars, result):
+            return float(result)
 
-    @staticmethod
-    def get_ramp_parameters_validate(pars):
-        validate_num_params(pars, 1)
-        LS350Driver.validate_input_number(pars[0])
+    class GetRampParameters(QueryCommand):
+        cmd = "RAMP?"
+        format = "{}"
 
-    @staticmethod
-    def get_ramp_parameters_response(pars, resp):
-        print("RESPONSE", resp)
-        resp = list(map(lambda x: x.strip(), resp.split(',')))
-        return {"On/Off": int(resp[0]),
-                "Rate": float(resp[1])}
+        @classmethod
+        def _validate(cls, pars):
+            LS350Driver.validate_input_number(pars[0])
 
-    @staticmethod
-    def set_ramp_parameters(pars):
-        LS350Driver.set_ramp_parameters_validate(pars)
-        return "RAMP {},{},{}".format(*pars)
+        @classmethod
+        def result(cls, pars, result):
+            resp = list(map(lambda x: x.strip(), result.split(',')))
+            return {"On/Off": int(resp[0]),
+                    "Rate": float(resp[1])}
 
-    @staticmethod
-    def set_ramp_parameters_validate(pars):
-        validate_num_params(pars, 3)
-        LS350Driver.validate_input_number(pars[0])
-        LS350Driver.validate_ramp_on_off(pars[1])
-        LS350Driver.validate_ramp_rate(pars[2])
+    class SetRampParameters(WriteCommand):
+        cmd = "RAMP"
+        format = "{},{},{}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS350Driver.validate_input_number(pars[0])
+            LS350Driver.validate_ramp_on_off(pars[1])
+            LS350Driver.validate_ramp_rate(pars[2])
 
     @staticmethod
     def validate_ramp_on_off(on_or_off):
@@ -191,46 +132,38 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
         if rate < 0 or rate > 100:
             raise ValueError("Ramp rate must be between 0 and 100. 0 means infinite ramp rate.")
 
-    @staticmethod
-    def get_ramp_status(pars):
-        LS350Driver.get_ramp_status_validate(pars)
-        return "RAMPST? {}".format(*pars)
+    class GetRampStatus(QueryCommand):
+        cmd = "RAMPST?"
+        format = "{}"
 
-    @staticmethod
-    def get_ramp_status_validate(pars):
-        print(pars)
-        validate_num_params(pars, 1)
-        LS350Driver.validate_input_number(pars[0])
+        @classmethod
+        def _validate(cls, pars):
+            LS350Driver.validate_input_number(pars[0])
 
-    @staticmethod
-    def get_ramp_status_response(pars, resp):
-        print("RESP", resp)
-        return int(resp[0])
+        @classmethod
+        def result(cls, pars, result):
+            return int(result[0])
 
-    @staticmethod
-    def get_heater_range(pars):
-        LS350Driver.get_heater_range_validate(pars)
-        return "RANGE? {}".format(*pars)
+    class GetHeaterRange(QueryCommand):
+        cmd = "RANGE?"
+        format = "{}"
 
-    @staticmethod
-    def get_heater_range_validate(pars):
-        validate_num_params(pars, 1)
-        LS350Driver.validate_input_number(pars[0])
+        @classmethod
+        def _validate(cls, pars):
+            LS350Driver.validate_input_number(pars[0])
 
-    @staticmethod
-    def get_heater_range_response(pars, resp):
-        return int(resp)
+        @classmethod
+        def result(cls, pars, result):
+            int(result)
 
-    @staticmethod
-    def set_heater_range(pars):
-        LS350Driver.set_heater_range_validate(pars)
-        return "RANGE {},{}".format(*pars)
+    class SetHeaterRange(WriteCommand):
+        cmd = "RANGE"
+        format = "{},{}"
 
-    @staticmethod
-    def set_heater_range_validate(pars):
-        validate_num_params(pars, 2)
-        LS350Driver.validate_input_number(pars[0])
-        LS350Driver.validate_heater_range(pars[0], pars[1])
+        @classmethod
+        def _validate(cls, pars):
+            LS350Driver.validate_input_number(pars[0])
+            LS350Driver.validate_heater_range(pars[0], pars[1])
 
     @staticmethod
     def validate_heater_range(output, heater_range):
