@@ -103,11 +103,11 @@ class Command(object):
         pass
 
 
-class SetCommand(Command):
+class WriteCommand(Command):
     type = CommandType.SET
 
 
-class GetCommand(Command):
+class QueryCommand(Command):
     type = CommandType.GET
 
     @classmethod
@@ -130,8 +130,8 @@ def find_subclasses(obj, type):
 class IEEE488_2_CommonCommands(Driver):
     def __init__(self, params):
         super().__init__(params)
-        self.get_commands = find_subclasses(self, GetCommand)
-        self.set_commands = find_subclasses(self, SetCommand)
+        self.get_commands = find_subclasses(self, QueryCommand)
+        self.set_commands = find_subclasses(self, WriteCommand)
         self.all_commands = {**self.get_commands, **self.set_commands}
 
     def split_cmd(self, cmd):
@@ -181,10 +181,10 @@ class IEEE488_2_CommonCommands(Driver):
             return None, e
         return processed, None
 
-    class ClearStatus(SetCommand):
+    class ClearStatus(WriteCommand):
         cmd = "*CLS"
 
-    class SetEventStatusEnable(SetCommand):
+    class SetEventStatusEnable(WriteCommand):
         cmd = "*ESE"
         format = "{}"
         num_args = 1
@@ -193,57 +193,57 @@ class IEEE488_2_CommonCommands(Driver):
         def _validate(cls, pars):
             validate_range(pars[0], 0, 255)
 
-    class GetEventStatusEnable(GetCommand):
+    class GetEventStatusEnable(QueryCommand):
         cmd = "*ESE?"
 
         @classmethod
         def result(cls, pars, result):
             return int(result)
 
-    class GetEventStatusRegister(GetCommand):
+    class GetEventStatusRegister(QueryCommand):
         cmd = "*ESR?"
 
         @classmethod
         def result(cls, pars, result):
             return int(result)
 
-    class GetIdentification(GetCommand):
+    class GetIdentification(QueryCommand):
         cmd = "*IDN?"
 
-    class SetOperationComplete(SetCommand):
+    class SetOperationComplete(WriteCommand):
         cmd = "*OPC"
 
-    class GetOperationComplete(GetCommand):
+    class GetOperationComplete(QueryCommand):
         cmd = "*OPC?"
 
         @classmethod
         def result(cls, pars, result):
             return int(result)
 
-    class ResetInstrument(SetCommand):
+    class ResetInstrument(WriteCommand):
         cmd = "*RST"
 
-    class SetServiceRequestEnable(SetCommand):
+    class SetServiceRequestEnable(WriteCommand):
         cmd = "*SRE"
         format = "{}"
         num_args = 1
 
-    class GetServiceRequestEnable(GetCommand):
+    class GetServiceRequestEnable(QueryCommand):
         cmd = "*SRE?"
 
         @classmethod
         def result(cls, pars, result):
             return int(result)
 
-    class GetStatusByte(GetCommand):
+    class GetStatusByte(QueryCommand):
         cmd = "*STB?"
 
         @classmethod
         def result(cls, pars, result):
             return int(result)
 
-    class SelfTest(SetCommand):
+    class SelfTest(WriteCommand):
         cmd = "*TST?"
 
-    class Wait(SetCommand):
+    class Wait(WriteCommand):
         cmd = "*WAI"
