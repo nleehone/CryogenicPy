@@ -176,44 +176,37 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
             if heater_range not in [0, 1]:
                 raise ValueError("Heater range must be either 0 or 1 for outputs [3, 4], instead got {}".format(heater_range))
 
-    @staticmethod
-    def get_reading_status(pars):
-        LS350Driver.get_reading_status_validate(pars)
-        return "RDGST? {}".format(pars)
+    class GetReadingStatus(QueryCommand):
+        cmd = "RDGST?"
+        arguments = "{}"
 
-    @staticmethod
-    def get_reading_status_validate(pars):
-        validate_num_params(pars, 1)
-        # We cannot get reading status for all inputs at the same time
-        LS350Driver.validate_input_letter(pars[0], include_all=False)
+        @classmethod
+        def _validate(cls, pars):
+            LS350Driver.validate_input_letter(pars[0], include_all=False)
 
-    @staticmethod
-    def get_reading_status_response(pars, resp):
-        return int(resp)
+        @classmethod
+        def result(cls, pars, result):
+            return int(result)
 
-    @staticmethod
-    def get_setpoint(pars):
-        LS350Driver.get_setpoint_validate(pars)
-        return "SETP? {}".format(*pars)
+    class GetSetpoint(QueryCommand):
+        cmd = "SETP?"
+        arguments = "{}"
 
-    @staticmethod
-    def get_setpoint_validate(pars):
-        validate_num_params(pars, 1)
-        LS350Driver.validate_input_number(pars[0])
+        @classmethod
+        def _validate(cls, pars):
+            LS350Driver.validate_input_number(pars[0])
 
-    @staticmethod
-    def get_setpoint_response(pars, resp):
-        return float(resp)
+        @classmethod
+        def result(cls, pars, result):
+            return float(result)
 
-    @staticmethod
-    def set_setpoint(pars):
-        LS350Driver.set_setpoint_validate(pars)
-        return "SETP {},{}".format(*pars)
+    class SetSetpoint(WriteCommand):
+        cmd = "SETP"
+        arguments = "{},{}"
 
-    @staticmethod
-    def set_setpoint_validate(pars):
-        validate_num_params(pars, 2)
-        LS350Driver.validate_input_number(pars[0])
+        @classmethod
+        def _validate(cls, pars):
+            LS350Driver.validate_input_number(pars[0])
 
 
 if __name__ == '__main__':
