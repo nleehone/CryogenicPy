@@ -5,8 +5,7 @@ import time
 import json
 import re
 
-driver_queue = 'LS350.driver'
-controller_queue = 'LS350.controller'
+driver_queue = 'SMS.driver'
 
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
               '-35s %(lineno) -5d: %(message)s')
