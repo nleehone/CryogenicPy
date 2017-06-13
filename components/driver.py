@@ -245,8 +245,6 @@ class CommandDriver(DriverComponent):
         except Exception as e:
             return e
 
-
-class IEEE488_2_CommonCommands(CommandDriver):
     def split_cmd(self, cmd):
         # Split the message into a command and a set of parameters
         command, *pars = list(filter(None, map(lambda x: x.strip(), re.split(',| |\?', cmd))))
@@ -255,6 +253,8 @@ class IEEE488_2_CommonCommands(CommandDriver):
             command += "?"
         return command, pars
 
+
+class IEEE488_2_CommonCommands(CommandDriver):
     class ClearStatus(WriteCommand):
         cmd = "*CLS"
 

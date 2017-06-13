@@ -18,14 +18,6 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
         super().__init__(params)
         self.tesla_per_amp = 0
 
-    def split_cmd(self, cmd):
-        # Split the message into a command and a set of parameters
-        command, *pars = list(filter(None, map(lambda x: x.strip(), re.split(',| |\?', cmd))))
-        # Put the question mark back in since it was removed in the split process
-        if "?" in cmd:
-            command += "?"
-        return command, pars
-
     @staticmethod
     def validate_units_T_A(units):
         if units not in ['T', 'A']:
