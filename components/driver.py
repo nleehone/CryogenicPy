@@ -48,8 +48,8 @@ class Driver(object):
         if 'termination' in params:
             self.resource.termination = {
                 'CR': self.resource.CR,
-                'LF': self.resource.LF
-            }[params['termination']]
+                'LF': self.resource.LF,
+            }.get(params['termination'], params['termination'])
 
     def write(self, msg):
         """

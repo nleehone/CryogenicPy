@@ -88,7 +88,8 @@ class DriverComponent(rmq.RmqComponent, Component):
                     results.append(r)
                     errors.append(e)
             return results, errors
-        except AttributeError:
+        except AttributeError as e:
+            print(e)
             self.logger.warning("Invalid command format: {}".format(body))
 
 
