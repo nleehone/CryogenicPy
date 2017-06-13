@@ -95,6 +95,7 @@ class Command(object):
     cmd = ""
     cmd_alias = None
     arguments = ""
+    arguments_alias = None
     num_args = 0
     type = None
 
@@ -105,10 +106,7 @@ class Command(object):
     @classmethod
     def command(cls, pars):
         cls.validate(pars)
-        if cls.cmd_alias is not None:
-            return (cls.cmd_alias + " " + cls.arguments.format(*pars)).strip()
-        else:
-            return (cls.cmd + " " + cls.arguments.format(*pars)).strip()
+        return (cls.cmd + " " + cls.arguments.format(*pars)).strip()
 
     @classmethod
     def validate(cls, pars):
@@ -119,13 +117,22 @@ class Command(object):
     def _validate(cls, pars):
         pass
 
+    @classmethod
+    def command_alias(cls, pars):
+        cls.validate(pars)
+        return (cls.cmd_alias + " " + cls.arguments_alias.format(*pars)).strip()
+
 
 class WriteCommand(Command):
     type = CommandType.SET
 
     @classmethod
     def execute(cls, pars, resource):
-        resource.write(cls.command(pars))
+        if cls.cmd_alias is None:
+            resource.write(cls.command(pars))
+        else:
+            cls.validate(pars)
+            resource.write(cls.command_alias(pars))
 
 
 class QueryCommand(Command):
@@ -137,7 +144,10 @@ class QueryCommand(Command):
 
     @classmethod
     def execute(cls, pars, resource):
-        result = resource.query(cls.command(pars))
+        if cls.cmd_alias is None:
+            result = resource.query(cls.command(pars))
+        else:
+            result = resource.query(cls.command_alias(pars))
         return cls.process_result(pars, result)
 
 
