@@ -218,8 +218,8 @@ class QueryCommand(Command):
 
 
 class CommandDriver(DriverComponent):
-    def __init__(self, params):
-        super().__init__(params)
+    def __init__(self, driver_queue, driver_params, **kwargs):
+        super().__init__(driver_queue, driver_params, **kwargs)
         self.get_commands = find_subclasses(self, QueryCommand)
         self.set_commands = find_subclasses(self, WriteCommand)
         self.all_commands = {**self.get_commands, **self.set_commands}

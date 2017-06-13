@@ -212,11 +212,11 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
-    driver = cmp.DriverComponent(driver_queue, {'library': '',
+    driver = LS350Driver(driver_queue, {'library': '',
                                                 'address': 'ASRL6::INSTR',
                                                 'baud_rate': 56000,
                                                 'parity': 'odd',
-                                                'data_bits': 7}, LS350Driver)
+                                                'data_bits': 7})
 
     try:
         time.sleep(1000000)
