@@ -17,6 +17,14 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
         super().__init__(driver_queue, driver_params, **kwargs)
         self.tesla_per_amp = 0
 
+        self.startup()
+
+    def set_tesla_per_amp(self, tesla_per_amp):
+        self.tesla_per_amp = tesla_per_amp
+
+    def startup(self):
+        self.query(self.GetTeslaPerAmp.command())
+
     @staticmethod
     def validate_units_T_A(units):
         if units not in ['T', 'A']:
@@ -70,7 +78,9 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
             message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
             found = re.search(r'[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?', result)
             if found:
-                return result.group(1)
+                tesla_per_amp = result.group(1)
+                driver.set_tesla_per_amp(tesla_per_amp)
+                return tesla_per_amp
             else:
                 raise ValueError("The result '{}' did not match the expected format for the '{}' command".
                                  format(result, cls.cmd_alias))
