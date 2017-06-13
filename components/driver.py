@@ -56,7 +56,7 @@ class DriverComponent(rmq.RmqComponent, Component):
             self.resource.termination = {
                 'CR': self.resource.CR,
                 'LF': self.resource.LF,
-            }.get(params['termination'], params['termination'])
+            }.get(driver_params['termination'], driver_params['termination'])
 
     def init_queues(self):
         self.channel.queue_declare(queue=self.driver_queue)
