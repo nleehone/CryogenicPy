@@ -57,7 +57,6 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
-            print(result)
             return result
 
     class GetTeslaPerAmp(QueryCommand):
@@ -71,8 +70,10 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
             message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
             found = re.search(r'[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?', result)
             if found:
-                print(found, result)
-            print(result)
+                return result.group(1)
+            else:
+                raise ValueError("The result '{}' did not match the expected format for the '{}' command".
+                                 format(result, cls.cmd_alias))
 
 
 if __name__ == '__main__':
