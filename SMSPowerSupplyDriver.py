@@ -44,6 +44,10 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
         cmd_alias = "GET TPA"
         arguments_alias = ""
 
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            print(result)
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
