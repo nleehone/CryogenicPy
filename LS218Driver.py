@@ -31,7 +31,7 @@ class LS218Driver(cmp.IEEE488_2_CommonCommands):
             LS218Driver.validate_input_number(pars[0], include_all=True)
 
         @classmethod
-        def process_result(cls, pars, result):
+        def process_result(cls, driver, cmd, pars, result):
             print(result, pars)
             if int(pars[0]) == 0:
                 return list(map(lambda x: float(x), result.split(',')))
@@ -48,11 +48,11 @@ class LS218Driver(cmp.IEEE488_2_CommonCommands):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
-    driver = cmp.DriverComponent(driver_queue, {'library': '',
+    driver = LS218Driver(driver_queue, {'library': '',
                                                 'address': 'ASRL3::INSTR',
                                                 'baud_rate': 9600,
                                                 'parity': 'odd',
-                                                'data_bits': 7}, LS218Driver)
+                                                'data_bits': 7})
 
     try:
         time.sleep(1000000)
