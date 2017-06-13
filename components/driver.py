@@ -138,7 +138,6 @@ class QueryCommand(Command):
     @classmethod
     def execute(cls, pars, resource):
         result = resource.query(cls.command(pars))
-        print("RESULT", result, pars, cls.command(pars))
         return cls.process_result(pars, result)
 
 
@@ -179,7 +178,6 @@ class CommandDriver(Driver):
         if error:
             return None, error
         cmd, pars = self.split_cmd(msg)
-        print(cmd, pars)
         return self.get_commands[cmd].execute(pars, self.resource), None
 
     def check_command(self, cmd):
