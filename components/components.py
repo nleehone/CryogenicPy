@@ -51,11 +51,12 @@ class DriverComponent(rmq.RmqComponent, Component):
         if method is not None:
             t0 = time.time()
             result, error = self.process_command(body)
+            print("RESULT: ", result, error)
             t1 = time.time()
             reply = {"t0": t0,
                      "t1": t1,
                      "result": result,
-                     "error": ["".join(traceback.format_exception(etype=type(e),value=e,tb=e.__traceback__)) for e in error if e] if error is not None else ""}
+                     "error": ["".join(traceback.format_exception(etype=type(e),value=e,tb=e.__traceback__) if e else "") for e in error] if error is not None else ""}
             print(body)
             print(reply, result, error)
             if result != [] or error != []:
