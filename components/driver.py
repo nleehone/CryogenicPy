@@ -79,15 +79,11 @@ class Driver(object):
         error = self.check_command(msg)
         if error:
             return None, error
-        return self.process_response(self.resource.query(msg), msg)
+        return self.resource.query(msg)
 
     def check_command(self, msg):
         # Don't check the command on the base Driver
         return None
-
-    def process_response(self, resp, msg):
-        # Pass the raw response back for the base Driver
-        return resp, None
 
 
 class CommandType(Enum):
@@ -97,6 +93,7 @@ class CommandType(Enum):
 
 class Command(object):
     cmd = ""
+    cmd_alias = None
     arguments = ""
     num_args = 0
     type = None
@@ -108,7 +105,10 @@ class Command(object):
     @classmethod
     def command(cls, pars):
         cls.validate(pars)
-        return (cls.cmd + " " + cls.arguments.format(pars)).strip()
+        if cls.cmd_alias is not None:
+            return (cls.cmd_alias + " " + cls.arguments.format(pars)).strip()
+        else:
+            return (cls.cmd + " " + cls.arguments.format(pars)).strip()
 
     @classmethod
     def validate(cls, pars):
@@ -119,6 +119,10 @@ class Command(object):
     def _validate(cls, pars):
         pass
 
+    @classmethod
+    def execute(cls, pars, resource):
+        resource.write(cls.command(pars))
+
 
 class WriteCommand(Command):
     type = CommandType.SET
@@ -128,8 +132,13 @@ class QueryCommand(Command):
     type = CommandType.GET
 
     @classmethod
-    def result(cls, pars, result):
+    def process_result(cls, pars, result):
         return result
+
+    @classmethod
+    def execute(cls, pars, resource):
+        result = resource.query(cls.command(pars))
+        return cls.process_result(pars, result)
 
 
 class CommandDriver(Driver):
@@ -139,20 +148,44 @@ class CommandDriver(Driver):
         self.set_commands = find_subclasses(self, WriteCommand)
         self.all_commands = {**self.get_commands, **self.set_commands}
 
+    def write(self, msg):
+        """
+        :param msg (str): Message to be sent
+        :return (int): Number of bytes written
+        """
+        error = self.check_command(msg)
+        cmd, pars = self.split_cmd(msg)
+        if error:
+            return None, error
+        return self.all_commands[cmd].execute(pars, self.resource), None
+
+    def read(self):
+        """
+        Read a string from the device.
+
+        Reads until the termination character is found
+        :return (str): The string with termination character stripped
+        """
+        return self.resource.read(), None
+
+    def query(self, msg):
+        """
+        Sequential write and read
+        :param msg (str): Message to be sent
+        :return (str): The string with termination character stripped
+        """
+        error = self.check_command(msg)
+        if error:
+            return None, error
+        cmd, pars = self.split_cmd(msg)
+        return self.get_commands[cmd].execute(pars, self.resource), None
+
     def check_command(self, cmd):
         cmd, pars = self.split_cmd(cmd)
         try:
             self.all_commands[cmd].validate(pars)
         except Exception as e:
             return e
-
-    def process_response(self, response, cmd):
-        cmd, pars = self.split_cmd(cmd)
-        try:
-            processed = self.get_commands[cmd].result(pars, response)
-        except Exception as e:
-            return None, e
-        return processed, None
 
 
 class IEEE488_2_CommonCommands(CommandDriver):
@@ -180,14 +213,14 @@ class IEEE488_2_CommonCommands(CommandDriver):
         cmd = "*ESE?"
 
         @classmethod
-        def result(cls, pars, result):
+        def process_result(cls, pars, result):
             return int(result)
 
     class GetEventStatusRegister(QueryCommand):
         cmd = "*ESR?"
 
         @classmethod
-        def result(cls, pars, result):
+        def process_result(cls, pars, result):
             return int(result)
 
     class GetIdentification(QueryCommand):
@@ -200,7 +233,7 @@ class IEEE488_2_CommonCommands(CommandDriver):
         cmd = "*OPC?"
 
         @classmethod
-        def result(cls, pars, result):
+        def process_result(cls, pars, result):
             return int(result)
 
     class ResetInstrument(WriteCommand):
@@ -215,14 +248,14 @@ class IEEE488_2_CommonCommands(CommandDriver):
         cmd = "*SRE?"
 
         @classmethod
-        def result(cls, pars, result):
+        def process_result(cls, pars, result):
             return int(result)
 
     class GetStatusByte(QueryCommand):
         cmd = "*STB?"
 
         @classmethod
-        def result(cls, pars, result):
+        def process_result(cls, pars, result):
             return int(result)
 
     class SelfTest(WriteCommand):
