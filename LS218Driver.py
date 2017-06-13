@@ -32,7 +32,7 @@ class LS218Driver(cmp.IEEE488_2_CommonCommands):
             LS218Driver.validate_input_number(pars[0], include_all=True)
 
         @classmethod
-        def result(cls, pars, result):
+        def process_result(cls, pars, result):
             print(result, pars)
             if int(pars[0]) == 0:
                 return list(map(lambda x: float(x), result.split(',')))

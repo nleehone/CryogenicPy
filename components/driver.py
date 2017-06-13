@@ -119,13 +119,13 @@ class Command(object):
     def _validate(cls, pars):
         pass
 
-    @classmethod
-    def execute(cls, pars, resource):
-        resource.write(cls.command(pars))
-
 
 class WriteCommand(Command):
     type = CommandType.SET
+
+    @classmethod
+    def execute(cls, pars, resource):
+        resource.write(cls.command(pars))
 
 
 class QueryCommand(Command):

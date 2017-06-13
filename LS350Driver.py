@@ -37,7 +37,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
         cmd = "BRIGT?"
 
         @classmethod
-        def result(cls, pars, result):
+        def process_result(cls, pars, result):
             return int(result)
 
     class SetBrightness(WriteCommand):
@@ -58,7 +58,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
             LS350Driver.validate_input_letter(pars[0])
 
         @classmethod
-        def result(cls, pars, result):
+        def process_result(cls, pars, result):
             return float(result)
 
     class GetTemperatureKelvin(QueryCommand):
@@ -70,7 +70,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
             LS350Driver.validate_input_letter(pars[0])
 
         @classmethod
-        def result(cls, pars, result):
+        def process_result(cls, pars, result):
             return float(result)
 
     class GetSensorReading(QueryCommand):
@@ -82,7 +82,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
             LS350Driver.validate_input_letter(pars[0])
 
         @classmethod
-        def result(cls, pars, result):
+        def process_result(cls, pars, result):
             return float(result)
 
     class GetHeaterOutputPercent(QueryCommand):
@@ -94,7 +94,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
             LS350Driver.validate_heater_output(pars[0])
 
         @classmethod
-        def result(cls, pars, result):
+        def process_result(cls, pars, result):
             return float(result)
 
     class GetRampParameters(QueryCommand):
@@ -106,7 +106,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
             LS350Driver.validate_input_number(pars[0])
 
         @classmethod
-        def result(cls, pars, result):
+        def process_result(cls, pars, result):
             resp = list(map(lambda x: x.strip(), result.split(',')))
             return {"On/Off": int(resp[0]),
                     "Rate": float(resp[1])}
@@ -141,7 +141,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
             LS350Driver.validate_input_number(pars[0])
 
         @classmethod
-        def result(cls, pars, result):
+        def process_result(cls, pars, result):
             return int(result[0])
 
     class GetHeaterRange(QueryCommand):
@@ -153,7 +153,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
             LS350Driver.validate_input_number(pars[0])
 
         @classmethod
-        def result(cls, pars, result):
+        def process_result(cls, pars, result):
             int(result)
 
     class SetHeaterRange(WriteCommand):
@@ -185,7 +185,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
             LS350Driver.validate_input_letter(pars[0], include_all=False)
 
         @classmethod
-        def result(cls, pars, result):
+        def process_result(cls, pars, result):
             return int(result)
 
     class GetSetpoint(QueryCommand):
@@ -197,7 +197,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
             LS350Driver.validate_input_number(pars[0])
 
         @classmethod
-        def result(cls, pars, result):
+        def process_result(cls, pars, result):
             return float(result)
 
     class SetSetpoint(WriteCommand):
