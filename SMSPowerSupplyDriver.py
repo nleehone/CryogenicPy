@@ -14,8 +14,8 @@ LOGGER = logging.getLogger(__name__)
 
 
 class SMSPowerSupplyDriver(cmp.CommandDriver):
-    def __init__(self, params):
-        super().__init__(params)
+    def __init__(self, driver_queue, driver_params, **kwargs):
+        super().__init__(driver_queue, driver_params, **kwargs)
         self.tesla_per_amp = 0
 
     @staticmethod
@@ -34,7 +34,7 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
             SMSPowerSupplyDriver.validate_units_T_A(pars[0])
 
         @classmethod
-        def process_result(cls, pars, result):
+        def process_result(cls, driver, cmd, pars, result):
             print(result)
             return result
 
@@ -45,43 +45,15 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
         arguments_alias = ""
 
 
-    class Update(QueryCommand):
-        cmd = "UPDATE"
-        arguments = "{}"
-
-
-    class Get(QueryCommand):
-        cmd = "GET"
-        arguments = "{}"
-
-        @classmethod
-        def _validate(cls, pars):
-            pass
-
-        @classmethod
-        def process_result(cls, pars, result):
-            pass
-
-        @classmethod
-        def command(cls, pars):
-            cls.validate(pars)
-            return (cls.cmd + " " + cls.arguments.format(pars)).strip()
-
-
-class SMSPowerSupplyDriverComponent(cmp.DriverComponent):
-    def __init__(self, driver_queue, driver_params, driver_class, **kwargs):
-        super.__init__(driver_queue, driver_params, driver_class, kwargs)
-
-
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
-    driver = cmp.DriverComponent(driver_queue, {'library': '',
+    driver = SMSPowerSupplyDriver(driver_queue, {'library': '',
                                                 'address': 'ASRL9::INSTR',
                                                 'baud_rate': 9600,
                                                 'parity': 'none',
                                                 'data_bits': 8,
-                                                'termination': 'x13'}, SMSPowerSupplyDriver)
+                                                'termination': 'x13'})
 
     try:
         time.sleep(1000000)
