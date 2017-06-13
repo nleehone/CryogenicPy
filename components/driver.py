@@ -1,5 +1,6 @@
 from . import rmq_component as rmq
 from .components import Component
+import time
 import visa
 import re
 import traceback
