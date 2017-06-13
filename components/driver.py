@@ -1,10 +1,24 @@
 from . import rmq_component as rmq
 from .components import Component
 import time
+import json
 import visa
 import re
 import traceback
 from enum import Enum
+
+
+def find_subclasses(obj, type):
+    results = {}
+    for attrname in dir(obj.__class__):
+        o = getattr(obj, attrname)
+        try:
+            if issubclass(o, type):
+                o.calc_num_args()
+                results[o.cmd] = o
+        except TypeError:
+            pass
+    return results
 
 
 class DriverComponent(rmq.RmqComponent, Component):
@@ -15,10 +29,34 @@ class DriverComponent(rmq.RmqComponent, Component):
 
     It is up to the user to make sure that only one instance of the Driver is ever running.
     """
-    def __init__(self, driver_queue, driver_params, driver_class, **kwargs):
-        self.driver = driver_class(driver_params)
+    def __init__(self, driver_queue, driver_params, **kwargs):
+        self.create_resource(driver_params)
         self.driver_queue = driver_queue
+
         super().__init__(**kwargs)
+
+    def create_resource(self, driver_params):
+        rm = visa.ResourceManager(driver_params.get('library', ''))
+        self.resource = rm.open_resource(driver_params['address'])
+        if 'baud_rate' in driver_params:
+            self.resource.baud_rate = driver_params['baud_rate']
+        if 'data_bits' in driver_params:
+            self.resource.data_bits = driver_params['data_bits']
+        if 'parity' in driver_params:
+            self.resource.parity = {
+                'odd': visa.constants.Parity.odd,
+                'even': visa.constants.Parity.even,
+                'none': visa.constants.Parity.none
+            }[driver_params['parity']]
+        if 'stop_bits' in driver_params:
+            self.resource.stop_bits = {
+                'one': visa.constants.StopBits.one
+            }[driver_params['stop_bits']]
+        if 'termination' in driver_params:
+            self.resource.termination = {
+                'CR': self.resource.CR,
+                'LF': self.resource.LF
+            }[driver_params['termination']]
 
     def init_queues(self):
         self.channel.queue_declare(queue=self.driver_queue)
@@ -55,19 +93,50 @@ class DriverComponent(rmq.RmqComponent, Component):
             results = []
             errors = []
             for command in cmd.split(';'):
+                cmd, pars = self.split_cmd(command)
                 if method == 'WRITE':
-                    self.driver.write(command)
+                    result, error = self.write(cmd, pars, command)
                 elif method == 'QUERY':
-                    r, e = self.driver.query(command)
-                    results.append(r)
-                    errors.append(e if e is not None else "")
+                    result, error = self.query(cmd, pars, command)
                 elif method == 'READ':
-                    r, e = self.driver.read()
-                    results.append(r)
-                    errors.append(e)
+                    result, error = self.read(cmd, pars, command)
+                else:
+                    raise AttributeError("Unrecognized METHOD")
+                errors.append(error if error is not None else "")
+                results.append(result if result is not None else "")
             return results, errors
         except AttributeError:
             self.logger.warning("Invalid command format: {}".format(body))
+
+    def read(self, cmd, pars, command):
+        return self.resource.read(), None
+
+    def write(self, cmd, pars, command):
+        result = None
+        error = self.check_command(cmd, pars)
+        if error is None:
+            self.resource.write(command)
+        return result, error
+
+    def query(self, cmd, pars, command):
+        result = None
+        error = self.check_command(cmd, pars)
+        if error is None:
+            result = self.resource.query(command)
+            result = self.process_result(cmd, pars, result)
+        return result, error
+
+    def split_cmd(self, cmd):
+        # Don't split the commands on the base Driver
+        return cmd
+
+    def check_command(self, cmd, pars):
+        # Don't check the command on the base Driver
+        return None
+
+    def process_result(self, cmd, pars, result):
+        # Don't modify the result for the base Driver
+        return result
 
 
 def validate_num_params(pars, num):
@@ -78,79 +147,6 @@ def validate_num_params(pars, num):
 def validate_range(par, low, high):
     if par < low or par > high:
         raise ValueError("Parameter must be in the range [{}:{}], but got {}".format(low, high, par))
-
-
-def find_subclasses(obj, type):
-    results = {}
-    for attrname in dir(obj.__class__):
-        o = getattr(obj, attrname)
-        try:
-            if issubclass(o, type):
-                o.calc_num_args()
-                results[o.cmd] = o
-        except TypeError:
-            pass
-    return results
-
-
-class Driver(object):
-    """Base class for all instrument drivers"""
-    def __init__(self, params):
-        rm = visa.ResourceManager(params.get('library', ''))
-        self.resource = rm.open_resource(params['address'])
-        if 'baud_rate' in params:
-            self.resource.baud_rate = params['baud_rate']
-        if 'data_bits' in params:
-            self.resource.data_bits = params['data_bits']
-        if 'parity' in params:
-            self.resource.parity = {
-                'odd': visa.constants.Parity.odd,
-                'even': visa.constants.Parity.even,
-                'none': visa.constants.Parity.none
-            }[params['parity']]
-        if 'stop_bits' in params:
-            self.resource.stop_bits = {
-                'one': visa.constants.StopBits.one
-            }[params['stop_bits']]
-        if 'termination' in params:
-            self.resource.termination = {
-                'CR': self.resource.CR,
-                'LF': self.resource.LF
-            }[params['termination']]
-
-    def write(self, msg):
-        """
-        :param msg (str): Message to be sent
-        :return (int): Number of bytes written
-        """
-        error = self.check_command(msg)
-        if error:
-            return None, error
-        return self.resource.write(msg), None
-
-    def read(self):
-        """
-        Read a string from the device.
-
-        Reads until the termination character is found
-        :return (str): The string with termination character stripped
-        """
-        return self.resource.read(), None
-
-    def query(self, msg):
-        """
-        Sequential write and read
-        :param msg (str): Message to be sent
-        :return (str): The string with termination character stripped
-        """
-        error = self.check_command(msg)
-        if error:
-            return None, error
-        return self.resource.query(msg)
-
-    def check_command(self, msg):
-        # Don't check the command on the base Driver
-        return None
 
 
 class CommandType(Enum):
@@ -173,7 +169,10 @@ class Command(object):
     @classmethod
     def command(cls, pars):
         cls.validate(pars)
-        return (cls.cmd + " " + cls.arguments.format(*pars)).strip()
+        if cls.cmd_alias is None:
+            return (cls.cmd + " " + cls.arguments.format(*pars)).strip()
+        else:
+            return (cls.cmd_alias + " " + cls.arguments_alias.format(*pars)).strip()
 
     @classmethod
     def validate(cls, pars):
@@ -206,7 +205,7 @@ class QueryCommand(Command):
     type = CommandType.GET
 
     @classmethod
-    def process_result(cls, pars, result):
+    def process_result(cls, driver, cmd, pars, result):
         return result
 
     @classmethod
@@ -218,47 +217,29 @@ class QueryCommand(Command):
         return cls.process_result(pars, result)
 
 
-class CommandDriver(Driver):
+class CommandDriver(DriverComponent):
     def __init__(self, params):
         super().__init__(params)
         self.get_commands = find_subclasses(self, QueryCommand)
         self.set_commands = find_subclasses(self, WriteCommand)
         self.all_commands = {**self.get_commands, **self.set_commands}
 
-    def write(self, msg):
-        """
-        :param msg (str): Message to be sent
-        :return (int): Number of bytes written
-        """
-        error = self.check_command(msg)
-        cmd, pars = self.split_cmd(msg)
-        if error:
-            return None, error
-        return self.all_commands[cmd].execute(pars, self.resource), None
+    def write(self, cmd, pars, command):
+        result = None
+        error = self.check_command(cmd, pars)
+        if error is None:
+            self.resource.write(self.all_commands[cmd].command(pars))
+        return result, error
 
-    def read(self):
-        """
-        Read a string from the device.
+    def query(self, cmd, pars, command):
+        result = None
+        error = self.check_command(cmd, pars)
+        if error is None:
+            result = self.resource.query(self.get_commands[cmd].command(pars))
+            result = self.get_commands[cmd].process_result(self, cmd, pars, result)
+        return result, error
 
-        Reads until the termination character is found
-        :return (str): The string with termination character stripped
-        """
-        return self.resource.read(), None
-
-    def query(self, msg):
-        """
-        Sequential write and read
-        :param msg (str): Message to be sent
-        :return (str): The string with termination character stripped
-        """
-        error = self.check_command(msg)
-        if error:
-            return None, error
-        cmd, pars = self.split_cmd(msg)
-        return self.get_commands[cmd].execute(pars, self.resource), None
-
-    def check_command(self, cmd):
-        cmd, pars = self.split_cmd(cmd)
+    def check_command(self, cmd, pars):
         try:
             self.all_commands[cmd].validate(pars)
         except Exception as e:
@@ -290,14 +271,14 @@ class IEEE488_2_CommonCommands(CommandDriver):
         cmd = "*ESE?"
 
         @classmethod
-        def process_result(cls, pars, result):
+        def process_result(cls, driver, cmd, pars, result):
             return int(result)
 
     class GetEventStatusRegister(QueryCommand):
         cmd = "*ESR?"
 
         @classmethod
-        def process_result(cls, pars, result):
+        def process_result(cls, driver, cmd, pars, result):
             return int(result)
 
     class GetIdentification(QueryCommand):
@@ -310,7 +291,7 @@ class IEEE488_2_CommonCommands(CommandDriver):
         cmd = "*OPC?"
 
         @classmethod
-        def process_result(cls, pars, result):
+        def process_result(cls, driver, cmd, pars, result):
             return int(result)
 
     class ResetInstrument(WriteCommand):
@@ -325,14 +306,14 @@ class IEEE488_2_CommonCommands(CommandDriver):
         cmd = "*SRE?"
 
         @classmethod
-        def process_result(cls, pars, result):
+        def process_result(cls, driver, cmd, pars, result):
             return int(result)
 
     class GetStatusByte(QueryCommand):
         cmd = "*STB?"
 
         @classmethod
-        def process_result(cls, pars, result):
+        def process_result(cls, driver, cmd, pars, result):
             return int(result)
 
     class SelfTest(WriteCommand):
