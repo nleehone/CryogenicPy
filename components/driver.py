@@ -90,6 +90,7 @@ class DriverComponent(rmq.RmqComponent, Component):
                 return method, None, error
 
             cmd = body['CMD']
+            print("COMMAND: ", cmd)
             results = []
             errors = []
             for command in cmd.split(';'):
@@ -211,13 +212,13 @@ class QueryCommand(Command):
         return result
 
     @classmethod
-    def execute(cls, pars, method):
+    def execute(cls, driver, cmd, pars, method):
         # Method is either resource.query or resource.write
         if cls.cmd_alias is None:
             result = method(cls.command(pars))
         else:
             result = method(cls.command_alias(pars))
-        return cls.process_result(pars, result)
+        return cls.process_result(driver, cmd, pars, result)
 
 
 class CommandDriver(DriverComponent):
@@ -240,8 +241,8 @@ class CommandDriver(DriverComponent):
         cmd, pars = self.split_cmd(command)
         error = self.check_command(cmd, pars)
         if error is None:
-            result = self.get_commands[cmd].execute(pars, self.resource.query)
-            result = self.get_commands[cmd].process_result(self, cmd, pars, result)
+            result = self.get_commands[cmd].execute(self, cmd, pars, self.resource.query)
+            #result = self.get_commands[cmd].process_result(self, cmd, pars, result)
         return result, error
 
     def check_command(self, cmd, pars):

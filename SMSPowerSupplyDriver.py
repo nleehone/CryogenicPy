@@ -12,6 +12,22 @@ LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
 LOGGER = logging.getLogger(__name__)
 
 
+def find_number(string):
+    return re.search(r'[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?', string)
+
+
+class SMSQueryCommand(QueryCommand):
+    @classmethod
+    def execute(cls, driver, cmd, pars, method):
+        # Method is either resource.query or resource.write
+        if cls.cmd_alias is None:
+            result = method(cls.command(pars))
+        else:
+            result = method(cls.command_alias(pars))
+        # Remove the special \x13 character before processing
+        return cls.process_result(driver, cmd, pars, result.replace('\x13', ''))
+
+
 class SMSPowerSupplyDriver(cmp.CommandDriver):
     """The SMS power supply takes a long time to respond to commands. It is therefore important to use a query for every
     command in order to ensure that we don't overload the instrument with too many commands. The instrument should only
@@ -28,6 +44,8 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
 
     def startup(self):
         self.query(self.GetTeslaPerAmp.command())
+        self.query(self.GetMid.command(['T']))
+        print(self.tesla_per_amp)
 
     @staticmethod
     def validate_units_T_A(units):
@@ -57,7 +75,7 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
             message_type = "status_update"
         return message_type, message
 
-    class GetUnits(QueryCommand):
+    class GetUnits(SMSQueryCommand):
         cmd = "UNITS?"
         arguments = ""
         cmd_alias = "TESLA"
@@ -74,10 +92,10 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
                 raise ValueError("The result '{}' did not match the expected format for the '{}' command".
                                  format(result, cls.cmd_alias))
 
-    class GetMid(QueryCommand):
+    class GetMid(SMSQueryCommand):
         cmd = "MID?"
         arguments = "{}"
-        cmd_alias = "GET MID\nTESLA"
+        cmd_alias = "GET MID"
         arguments_alias = ""
 
         @classmethod
@@ -86,10 +104,27 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
-            print(result)
-            return result
+            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
+            value = find_number(result)
+            units = re.search(r'(TESLA|AMPS)', result)
+            if not value or not units:
+                raise ValueError("The result '{}' did not match the expected format for the '{}' command".
+                                 format(result, cls.cmd_alias))
+            value = float(value.group())
+            units = units.group()
 
-    class SetTeslaPerAmp(QueryCommand):
+            if pars[0] == 'T':
+                if units == 'TESLA':
+                    return value
+                else:
+                    return value * driver.tesla_per_amp
+            else: # pars[0] == 'A' is the only other option because we validated the command before this
+                if units == 'TESLA':
+                    return value / driver.tesla_per_amp
+                else:
+                    return value
+
+    class SetTeslaPerAmp(SMSQueryCommand):
         cmd = "TPA"
         arguments = "{}"
         cmd_alias = "SET TPA"
@@ -97,14 +132,16 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
 
         @classmethod
         def _validate(cls, pars):
-            pass
+            value = float(pars[0])
+            if (value < 0.01 and value != 0) or value > 0.5:
+                raise ValueError("The T/A setting must be either 0, or 0.01 and 0.5")
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
             print(result)
             return result
 
-    class GetTeslaPerAmp(QueryCommand):
+    class GetTeslaPerAmp(SMSQueryCommand):
         cmd = "TPA?"
         arguments = ""
         cmd_alias = "GET TPA"
@@ -113,9 +150,9 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
             message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
-            found = re.search(r'[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?', result)
+            found = find_number(result)
             if found:
-                tesla_per_amp = result.group(1)
+                tesla_per_amp = float(found.group())
                 # Record the T/A setting on the driver. The user should never set this via the instrument front panel
                 # so it should be OK to store this whenever it is read
                 driver.set_tesla_per_amp(tesla_per_amp)
@@ -133,7 +170,7 @@ if __name__ == '__main__':
                                                  'baud_rate': 9600,
                                                  'parity': 'none',
                                                  'data_bits': 8,
-                                                 'termination': 'x13'})
+                                                 'termination': '\x13'})
 
     try:
         time.sleep(1000000)
