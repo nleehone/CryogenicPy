@@ -16,6 +16,17 @@ def find_number(string):
     return re.search(r'[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?', string)
 
 
+def convert_units(driver, value, units):
+    instr_units = driver.query(driver.GetUnits.command())
+    if units == 'T':
+        if instr_units == 'A':
+            value /= driver.tesla_per_amp
+    else:
+        if instr_units == 'T':
+            value *= driver.tesla_per_amp
+    return value
+
+
 class SMSQueryCommand(QueryCommand):
     @classmethod
     def execute(cls, driver, cmd, pars, method):
@@ -84,10 +95,10 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
             message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
-            found = re.search(r'', result)
+            found = find_number(result)
             if found:
                 units = result.group()
-                return units
+                return 'T' if units == 1 else 'A'
             else:
                 raise ValueError("The result '{}' did not match the expected format for the '{}' command".
                                  format(result, cls.cmd_alias))
@@ -123,6 +134,125 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
                     return value / driver.tesla_per_amp
                 else:
                     return value
+
+    class SetMid(SMSQueryCommand):
+        cmd = "MID"
+        arguments = "{},{}"
+        cmd_alias = "SET MID"
+        arguments_alias = "{}"
+
+        @classmethod
+        def _validate(cls, pars):
+            SMSPowerSupplyDriver.validate_units_T_A(pars[1])
+
+        @classmethod
+        def execute(cls, driver, cmd, pars, method):
+            value = convert_units(driver, float(pars[0]), pars[1])
+            result = method(cls.cmd_alias + " " + cls.arguments_alias.format(value))
+            return cls.process_result(driver, cmd, pars, result)
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            return ""
+
+    class GetMax(GetMid):
+        cmd = "MID"
+        cmd_alias = "GET MID"
+
+    class SetMax(SetMid):
+        cmd = "MAX"
+        cmd_alias = "SET MAX"
+
+    class GetVoltageLimit(SMSQueryCommand):
+        cmd = "VLIM?"
+        arguments = ""
+        cmd_alias = "GET VL"
+        arguments_alias = ""
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
+            value = find_number(result)
+            if not value:
+                raise ValueError("The result '{}' did not match the expected format for the '{}' command".
+                                 format(result, cls.cmd_alias))
+            return float(value.group())
+
+    class SetVoltageLimit(SMSQueryCommand):
+        cmd = "VLIM"
+        arguments = "{}"
+        cmd_alias = "SET LIMIT"
+        arguments_alias = "{}"
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            return ""
+
+    class GetHeaterVoltage(SMSQueryCommand):
+        cmd = "HTRV?"
+        cmd_alias = "GET HV"
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
+            value = find_number(result)
+            if not value:
+                raise ValueError("The result '{}' did not match the expected format for the '{}' command".
+                                 format(result, cls.cmd_alias))
+            return float(value.group())
+
+    class SetHeaterVoltage(SMSQueryCommand):
+        cmd = "HTRV"
+        arguments = "{}"
+        cmd_alias = "SET HEATER"
+        arguments_alias = "{}"
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            return ""
+
+    class GetFilterStatus(SMSQueryCommand):
+        cmd = "FILTER?"
+        cmd_alias = "FILTER"
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
+            value = find_number(result)
+            if not value:
+                raise ValueError("The result '{}' did not match the expected format for the '{}' command".
+                                 format(result, cls.cmd_alias))
+            return int(value.group())
+
+    class SetFilterStatus(SMSQueryCommand):
+        cmd = "FILTER"
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            return ""
+
+    class GetPersistentHeaterStatus(SMSQueryCommand):
+        cmd = "HTR?"
+        cmd_alias = "HEATER"
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
+            value = find_number(result)
+            if not value:
+                raise ValueError("The result '{}' did not match the expected format for the '{}' command".
+                                 format(result, cls.cmd_alias))
+            return int(value.group())
+
+    class SetPersistentHeaterStatus(SMSQueryCommand):
+        cmd = "HTR"
+        arguments = "{}"
+        cmd_alias = "HEATER"
+        arguments_alias = "{}"
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            return ""
 
     class SetTeslaPerAmp(SMSQueryCommand):
         cmd = "TPA"

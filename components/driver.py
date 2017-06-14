@@ -242,7 +242,6 @@ class CommandDriver(DriverComponent):
         error = self.check_command(cmd, pars)
         if error is None:
             result = self.get_commands[cmd].execute(self, cmd, pars, self.resource.query)
-            #result = self.get_commands[cmd].process_result(self, cmd, pars, result)
         return result, error
 
     def check_command(self, cmd, pars):
