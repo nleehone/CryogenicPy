@@ -70,7 +70,8 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
             message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
             found = re.search(r'[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?', result)
             if found:
-                return result.group(1)
+                print(found, found.group(), found.group(1))
+                return found.group(1)
             else:
                 raise ValueError("The result '{}' did not match the expected format for the '{}' command".
                                  format(result, cls.cmd_alias))

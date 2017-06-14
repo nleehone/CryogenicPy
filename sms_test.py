@@ -7,21 +7,7 @@ resource.read_termination = '\x13'
 resource.clear()
 #print(resource.read())
 t0 = time.time()
-print(resource.query('GET PER'
-                     ''
-                     ''
-                     ''
-                     ''
-                     ''
-                     ''
-                     ''
-                     ''
-                     ''))
-#print(resource.read())
-try:
-    print(resource.read())
-except Exception as e:
-    print(e)
+print(resource.query('TESLA'))
 print(time.time() - t0)
 
 #t0 = time.time()

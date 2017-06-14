@@ -66,7 +66,7 @@ class DriverComponent(rmq.RmqComponent, Component):
                                                           no_ack=True)
         if method is not None:
             t0 = time.time()
-            result, error = self.process_command(body)
+            cmd_method, result, error = self.process_command(body)
             print("RESULT: ", result, error)
             t1 = time.time()
             reply = {"t0": t0,
@@ -75,7 +75,7 @@ class DriverComponent(rmq.RmqComponent, Component):
                      "error": ["".join(traceback.format_exception(etype=type(e),value=e,tb=e.__traceback__) if e else "") for e in error] if error is not None else ""}
             print(body)
             print(reply, result, error)
-            if result != [] or error != []:
+            if cmd_method == 'QUERY' or cmd_method == 'READ':
                 print(properties.reply_to, reply)
                 self.channel.basic_publish('', routing_key=properties.reply_to, body=json.dumps(reply))
 
@@ -87,7 +87,7 @@ class DriverComponent(rmq.RmqComponent, Component):
             if method not in ['WRITE', 'QUERY', 'READ']:
                 error = "Unrecognized METHOD: {}".format(method)
                 self.logger.warning(error)
-                return None, error
+                return method, None, error
 
             cmd = body['CMD']
             results = []
@@ -104,8 +104,8 @@ class DriverComponent(rmq.RmqComponent, Component):
                     raise AttributeError("Unrecognized METHOD")
                 errors.append(error if error is not None else "")
                 results.append(result if result is not None else "")
-            return results, errors
-        except AttributeError:
+            return method, results, errors
+        except AttributeError as e:
             self.logger.warning("Invalid command format: {}".format(body))
 
     def read(self, cmd, pars, command):
