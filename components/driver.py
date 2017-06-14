@@ -95,11 +95,11 @@ class DriverComponent(rmq.RmqComponent, Component):
             for command in cmd.split(';'):
                 cmd, pars = self.split_cmd(command)
                 if method == 'WRITE':
-                    result, error = self.write(cmd, pars, command)
+                    result, error = self.write(command)
                 elif method == 'QUERY':
-                    result, error = self.query(cmd, pars, command)
+                    result, error = self.query(command)
                 elif method == 'READ':
-                    result, error = self.read(cmd, pars, command)
+                    result, error = self.read(command)
                 else:
                     raise AttributeError("Unrecognized METHOD")
                 errors.append(error if error is not None else "")
@@ -108,18 +108,20 @@ class DriverComponent(rmq.RmqComponent, Component):
         except AttributeError as e:
             self.logger.warning("Invalid command format: {}".format(body))
 
-    def read(self, cmd, pars, command):
+    def read(self, command):
         return self.resource.read(), None
 
-    def write(self, cmd, pars, command):
+    def write(self, command):
         result = None
+        cmd, pars = self.split_cmd(command)
         error = self.check_command(cmd, pars)
         if error is None:
             self.resource.write(command)
         return result, error
 
-    def query(self, cmd, pars, command):
+    def query(self, command):
         result = None
+        cmd, pars = self.split_cmd(command)
         error = self.check_command(cmd, pars)
         if error is None:
             result = self.resource.query(command)
@@ -128,7 +130,7 @@ class DriverComponent(rmq.RmqComponent, Component):
 
     def split_cmd(self, cmd):
         # Don't split the commands on the base Driver
-        return cmd
+        return cmd, None
 
     def check_command(self, cmd, pars):
         # Don't check the command on the base Driver
@@ -167,12 +169,11 @@ class Command(object):
         cls.num_args = len(re.findall("{(\s*)}", cls.arguments))
 
     @classmethod
-    def command(cls, pars):
+    def command(cls, pars=None):
+        if pars is None:
+            pars = []
         cls.validate(pars)
-        if cls.cmd_alias is None:
-            return (cls.cmd + " " + cls.arguments.format(*pars)).strip()
-        else:
-            return (cls.cmd_alias + " " + cls.arguments_alias.format(*pars)).strip()
+        return (cls.cmd + " " + cls.arguments.format(*pars)).strip()
 
     @classmethod
     def validate(cls, pars):
@@ -184,7 +185,9 @@ class Command(object):
         pass
 
     @classmethod
-    def command_alias(cls, pars):
+    def command_alias(cls, pars=None):
+        if pars is None:
+            pars = []
         cls.validate(pars)
         return (cls.cmd_alias + " " + cls.arguments_alias.format(*pars)).strip()
 
@@ -193,12 +196,11 @@ class WriteCommand(Command):
     type = CommandType.SET
 
     @classmethod
-    def execute(cls, pars, resource):
+    def execute(cls, pars, method):
         if cls.cmd_alias is None:
-            resource.write(cls.command(pars))
+            method(cls.command(pars))
         else:
-            cls.validate(pars)
-            resource.write(cls.command_alias(pars))
+            method(cls.command_alias(pars))
 
 
 class QueryCommand(Command):
@@ -209,11 +211,12 @@ class QueryCommand(Command):
         return result
 
     @classmethod
-    def execute(cls, pars, resource):
+    def execute(cls, pars, method):
+        # Method is either resource.query or resource.write
         if cls.cmd_alias is None:
-            result = resource.query(cls.command(pars))
+            result = method(cls.command(pars))
         else:
-            result = resource.query(cls.command_alias(pars))
+            result = method(cls.command_alias(pars))
         return cls.process_result(pars, result)
 
 
@@ -224,18 +227,20 @@ class CommandDriver(DriverComponent):
         self.set_commands = find_subclasses(self, WriteCommand)
         self.all_commands = {**self.get_commands, **self.set_commands}
 
-    def write(self, cmd, pars, command):
+    def write(self, command):
         result = None
+        cmd, pars = self.split_cmd(command)
         error = self.check_command(cmd, pars)
         if error is None:
-            self.resource.write(self.all_commands[cmd].command(pars))
+            self.all_commands[cmd].execute(pars, self.resource.write)
         return result, error
 
-    def query(self, cmd, pars, command):
+    def query(self, command):
         result = None
+        cmd, pars = self.split_cmd(command)
         error = self.check_command(cmd, pars)
         if error is None:
-            result = self.resource.query(self.get_commands[cmd].command(pars))
+            result = self.get_commands[cmd].execute(pars, self.resource.query)
             result = self.get_commands[cmd].process_result(self, cmd, pars, result)
         return result, error
 
