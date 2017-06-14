@@ -13,6 +13,10 @@ LOGGER = logging.getLogger(__name__)
 
 
 class SMSPowerSupplyDriver(cmp.CommandDriver):
+    """The SMS power supply takes a long time to respond to commands. It is therefore important to use a query for every
+    command in order to ensure that we don't overload the instrument with too many commands. The instrument should only
+    be communicated with once the previous command has returned."""
+
     def __init__(self, driver_queue, driver_params, **kwargs):
         super().__init__(driver_queue, driver_params, **kwargs)
         self.tesla_per_amp = 0
@@ -53,10 +57,27 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
             message_type = "status_update"
         return message_type, message
 
+    class GetUnits(QueryCommand):
+        cmd = "UNITS?"
+        arguments = ""
+        cmd_alias = "TESLA"
+        arguments_alias = "{}"
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
+            found = re.search(r'', result)
+            if found:
+                units = result.group()
+                return units
+            else:
+                raise ValueError("The result '{}' did not match the expected format for the '{}' command".
+                                 format(result, cls.cmd_alias))
+
     class GetMid(QueryCommand):
         cmd = "MID?"
         arguments = "{}"
-        cmd_alias = "GET MID"
+        cmd_alias = "GET MID\nTESLA"
         arguments_alias = ""
 
         @classmethod
@@ -65,6 +86,22 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
+            print(result)
+            return result
+
+    class SetTeslaPerAmp(QueryCommand):
+        cmd = "TPA"
+        arguments = "{}"
+        cmd_alias = "SET TPA"
+        arguments_alias = "{}"
+
+        @classmethod
+        def _validate(cls, pars):
+            pass
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            print(result)
             return result
 
     class GetTeslaPerAmp(QueryCommand):
@@ -78,7 +115,9 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
             message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
             found = re.search(r'[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?', result)
             if found:
-                tesla_per_amp = result.group(1)
+                tesla_per_amp = result.group()
+                # Record the T/A setting on the driver. The user should never set this via the instrument front panel
+                # so it should be OK to store this whenever it is read
                 driver.set_tesla_per_amp(tesla_per_amp)
                 return tesla_per_amp
             else:
