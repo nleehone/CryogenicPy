@@ -156,8 +156,8 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
             return ""
 
     class GetMax(GetMid):
-        cmd = "MID"
-        cmd_alias = "GET MID"
+        cmd = "MAX?"
+        cmd_alias = "GET MAX"
 
     class SetMax(SetMid):
         cmd = "MAX"
