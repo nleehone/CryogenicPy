@@ -17,7 +17,7 @@ def find_number(string):
 
 
 def convert_units(driver, value, units):
-    instr_units = driver.query(driver.GetUnits.command())
+    instr_units, _ = driver.query(driver.GetUnits.command())
     if units == 'T':
         if instr_units == 'A':
             value /= driver.tesla_per_amp
@@ -72,33 +72,38 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
         """
         # Remove any unwanted whitespace at start and end of message
         message = message.strip()
+        message = message.replace('\x13', '')
         message_head = message[:8]
         message = message[9:]
-        if message_head == "........":
-            message_type = "status_confirmation"
-        elif message_head == "=======>":
-            message_type = "fault_report"
-        elif message_head == "------->":
+        if message[:10] == "!!------->":
+            message = message[11:]
             message_type = "command_information"
-        elif message_head == "        ":  # 8 spaces
-            message_type = "controller identification"
-        else:  # Should have the format HH:MM:SS
-            message_type = "status_update"
+        else:
+            if message_head == "........":
+                message_type = "status_confirmation"
+            elif message_head == "=======>":
+                message_type = "fault_report"
+            elif message_head == "------->":
+                message_type = "command_information"
+            elif message_head == "        ":  # 8 spaces
+                message_type = "controller identification"
+            else:  # Should have the format HH:MM:SS
+                message_type = "status_update"
         return message_type, message
 
     class GetUnits(SMSQueryCommand):
         cmd = "UNITS?"
         arguments = ""
         cmd_alias = "TESLA"
-        arguments_alias = "{}"
+        arguments_alias = ""
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
             message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
-            found = find_number(result)
+            found = re.search(r'(TESLA|AMPS)', result)
             if found:
-                units = result.group()
-                return 'T' if units == 1 else 'A'
+                units = found.group()
+                return 'T' if units == 'TESLA' else 'A'
             else:
                 raise ValueError("The result '{}' did not match the expected format for the '{}' command".
                                  format(result, cls.cmd_alias))
@@ -153,6 +158,9 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
+            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
+            if message_type == "command_information":
+                return result
             return ""
 
     class GetMax(GetMid):
