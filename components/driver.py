@@ -161,7 +161,7 @@ class Command(object):
     cmd = ""
     cmd_alias = None
     arguments = ""
-    arguments_alias = None
+    arguments_alias = ""
     num_args = 0
     type = None
 
