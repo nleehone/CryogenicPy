@@ -4,6 +4,8 @@ import logging
 import time
 import json
 import re
+import configparser
+import sys
 
 driver_queue = 'SMS.driver'
 
@@ -301,14 +303,18 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
 
 
 if __name__ == '__main__':
+    config = configparser.ConfigParser()
+    config.read(sys.argv[1])
+    SMS_config = config['SMSPowerSupply']
+
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
     driver = SMSPowerSupplyDriver(driver_queue, {'library': '',
-                                                 'address': 'ASRL9::INSTR',
-                                                 'baud_rate': 9600,
-                                                 'parity': 'none',
-                                                 'data_bits': 8,
-                                                 'termination': '\x13'})
+                                                 'address': SMS_config['address'],
+                                                 'baud_rate': SMS_config.getint('baud_rate'),
+                                                 'parity': SMS_config['parity'],
+                                                 'data_bits': SMS_config.getint('data_bits'),
+                                                 'termination': SMS_config['termination']})
 
     try:
         time.sleep(1000000)
