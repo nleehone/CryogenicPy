@@ -305,6 +305,27 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
         def process_result(cls, driver, cmd, pars, result):
             return ""
 
+    class GetPauseState(SMSQueryCommand):
+        cmd = "PAUSE?"
+        cmd_alias = "PAUSE"
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
+            status = re.search(r'(ON|OFF)', result)
+            if not status:
+                raise ValueError("The result '{}' did not match the expected format for the '{}' command".
+                                 format(result, cls.cmd_alias))
+            return 0 if status.group() == 'OFF' else 1
+
+    class SetPauseState(SMSQueryCommand):
+        cmd = "PAUSE"
+        arguments = "{}"
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            return ""
+
     class GetPersistentHeaterStatus(SMSQueryCommand):
         cmd = "HTR?"
         arguments = "{}"
