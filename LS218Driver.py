@@ -370,15 +370,98 @@ class LS218Driver(cmp.IEEE488_2_CommonCommands):
             LS218Driver.validate_input_number(pars[0])
             LS218Driver.validate_input_number(pars[1])
 
+
+
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
             resp = list(map(lambda x: x.strip(), result.split(',')))
-            return {"date": int(resp[0]),
-                    "time": int(resp[1]),
-                    "reading": int(resp[2]),
+            return {"date": str(resp[0]),
+                    "time": str(resp[1]),
+                    "reading": float(resp[2]),
                     "status": int(resp[3]),
                     "source": int(resp[4])
                     }
+
+    class GetLinearEquationData(QueryCommand):
+        cmd = "LRDG?"
+        arguments = "{}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS218Driver.validate_input_number(pars[0])
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            return(float(result))
+
+    class GetMinMaxInputParameters(QueryCommand):
+        cmd = "MNMX?"
+        arguments = "{}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS218Driver.validate_input_number(pars[0])
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            return(int(result))
+
+    class GetMinMaxData(QueryCommand):
+        cmd = "MNMXRDG?"
+        arguments = "{}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS218Driver.validate_input_number(pars[0])
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            resp = list(map(lambda x: x.strip(), result.split(',')))
+            return {"min": float(resp[0]),
+                    "max": float(resp[1])
+                    }
+
+    class GetRemoteInterfaceMode(QueryCommand):
+        cmd = "MODE?"
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            return int(result)
+
+    class GetInputStatus(QueryCommand):
+        cmd = "RDGST?"
+        arguments = "{}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS218Driver.validate_input_number(pars[0])
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            return int(result)
+
+    class GetRelayControlParameters(QueryCommand):
+        cmd = "RELAY?"
+        arguments = "{}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS218Driver.validate_input_number(pars[0])
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            resp = list(map(lambda x: x.strip(), result.split(',')))
+            return {"mode": int(resp[0]),
+                    "input": int(resp[1]),
+                    "type": int(resp[2]),
+                    }
+
+    class GetRelayStatus(QueryCommand):
+        cmd = "RELAYST?"
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            return int(result)
 
     class SetDateTime(WriteCommand):
         cmd = "DATETIME"
