@@ -4,8 +4,8 @@ import logging
 import time
 import json
 import re
-
-driver_queue = 'LS218.driver'
+import configparser
+import sys
 
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
               '-35s %(lineno) -5d: %(message)s')
@@ -394,13 +394,17 @@ class LS218Driver(cmp.IEEE488_2_CommonCommands):
             LS218Driver.validate_MinSec(pars[5])
 
 if __name__ == '__main__':
+    config = configparser.ConfigParser()
+    config.read(sys.argv[1])
+    LS218_config = config['LS218']
+
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
-    driver = LS218Driver(driver_queue, {'library': '',
-                                                'address': 'ASRL3::INSTR',
-                                                'baud_rate': 9600,
-                                                'parity': 'odd',
-                                                'data_bits': 7})
+    driver = LS218Driver(LS218_config['queue_name'], {'library': '',
+                                                'address': LS218_config['address'],
+                                                'baud_rate': LS218_config.getint('baud_rate'),
+                                                'parity': LS218_config['parity'],
+                                                'data_bits': LS218_config.getint('data_bits')})
 
     try:
         time.sleep(1000000)

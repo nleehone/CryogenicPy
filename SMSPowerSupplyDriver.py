@@ -4,8 +4,8 @@ import logging
 import time
 import json
 import re
-
-driver_queue = 'SMS.driver'
+import configparser
+import sys
 
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
               '-35s %(lineno) -5d: %(message)s')
@@ -91,6 +91,27 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
                 message_type = "status_update"
         return message_type, message
 
+    class GetFilterStatus(SMSQueryCommand):
+        cmd = "FILTER?"
+        cmd_alias = "FILTER"
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
+            found = re.search(r'(ON|OFF)', result)
+            if not found:
+                raise ValueError("The result '{}' did not match the expected format for the '{}' command".format(
+                    result, cls.cmd))
+            return 0 if found.group() == 'OFF' else 1
+
+    class SetFilterStatus(SMSQueryCommand):
+        cmd = "FILTER"
+        arguments = "{}"
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            return ""
+
     class GetUnits(SMSQueryCommand):
         cmd = "UNITS?"
         arguments = ""
@@ -107,6 +128,22 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
             else:
                 raise ValueError("The result '{}' did not match the expected format for the '{}' command".
                                  format(result, cls.cmd_alias))
+
+    class SetUnits(SMSQueryCommand):
+        cmd = "UNITS"
+        arguments = "{}"
+        cmd_alias = "TESLA"
+        arguments_alias = "{}"
+
+        @classmethod
+        def execute(cls, driver, cmd, pars, method):
+            value = 1 if pars[0] == 'T' else 0
+            result = method(cls.cmd_alias + " " + cls.arguments_alias.format(value))
+            return cls.process_result(driver, cmd, pars, result)
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            return ""
 
     class GetMid(SMSQueryCommand):
         cmd = "MID?"
@@ -171,6 +208,55 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
         cmd = "MAX"
         cmd_alias = "SET MAX"
 
+    class GetRampRate(SMSQueryCommand):
+        cmd = "RATE?"
+        arguments = "{}"
+        cmd_alias = "GET RATE"
+        arguments_alias = ""
+
+        @classmethod
+        def _validate(cls, pars):
+            SMSPowerSupplyDriver.validate_units_T_A(pars[0])
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
+            value = find_number(result)
+            if not value:
+                raise ValueError("The result '{}' did not match the expected format for the '{}' command".
+                                 format(result, cls.cmd_alias))
+            value = float(value.group())
+
+            if pars[0] == 'T':
+                return value * driver.tesla_per_amp
+            else:
+                return value
+
+    class SetRampRate(SMSQueryCommand):
+        cmd = "RATE"
+        arguments = "{},{}"
+        cmd_alias = "SET RAMP"
+        arguments_alias = "{}"
+
+        @classmethod
+        def _validate(cls, pars):
+            SMSPowerSupplyDriver.validate_units_T_A(pars[1])
+
+        @classmethod
+        def execute(cls, driver, cmd, pars, method):
+            value = float(pars[0])
+            if pars[1] == 'T':
+                value /= driver.tesla_per_amp
+            result = method(cls.cmd_alias + " " + cls.arguments_alias.format(value))
+            return cls.process_result(driver, cmd, pars, result)
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
+            if message_type == "command_information":
+                return result
+            return ""
+
     class GetVoltageLimit(SMSQueryCommand):
         cmd = "VLIM?"
         arguments = ""
@@ -219,38 +305,30 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
         def process_result(cls, driver, cmd, pars, result):
             return ""
 
-    class GetFilterStatus(SMSQueryCommand):
-        cmd = "FILTER?"
-        cmd_alias = "FILTER"
-
-        @classmethod
-        def process_result(cls, driver, cmd, pars, result):
-            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
-            value = find_number(result)
-            if not value:
-                raise ValueError("The result '{}' did not match the expected format for the '{}' command".
-                                 format(result, cls.cmd_alias))
-            return int(value.group())
-
-    class SetFilterStatus(SMSQueryCommand):
-        cmd = "FILTER"
-
-        @classmethod
-        def process_result(cls, driver, cmd, pars, result):
-            return ""
-
     class GetPersistentHeaterStatus(SMSQueryCommand):
         cmd = "HTR?"
+        arguments = "{}"
         cmd_alias = "HEATER"
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
             message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
             value = find_number(result)
-            if not value:
+            units = re.search(r'(TESLA|AMPS)', result)
+            status = re.search(r'(ON|OFF)', result)
+            if not status:
                 raise ValueError("The result '{}' did not match the expected format for the '{}' command".
                                  format(result, cls.cmd_alias))
-            return int(value.group())
+            if value:
+                value = float(value.group())
+                if units == 'TESLA' and pars[0] == 'A':
+                    value /= driver.tesla_per_amp
+                elif units == 'AMPS' and pars[0] == 'T':
+                    value *= driver.tesla_per_amp
+            else:
+                value = 0
+            return {'Status': 0 if status.group() == 'OFF' else 1,
+                    'Switched off at': value}
 
     class SetPersistentHeaterStatus(SMSQueryCommand):
         cmd = "HTR"
@@ -301,14 +379,18 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
 
 
 if __name__ == '__main__':
+    config = configparser.ConfigParser()
+    config.read(sys.argv[1])
+    SMS_config = config['SMSPowerSupply']
+
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
-    driver = SMSPowerSupplyDriver(driver_queue, {'library': '',
-                                                 'address': 'ASRL9::INSTR',
-                                                 'baud_rate': 9600,
-                                                 'parity': 'none',
-                                                 'data_bits': 8,
-                                                 'termination': '\x13'})
+    driver = SMSPowerSupplyDriver(SMS_config['queue_name'], {'library': '',
+                                                 'address': SMS_config['address'],
+                                                 'baud_rate': SMS_config.getint('baud_rate'),
+                                                 'parity': SMS_config['parity'],
+                                                 'data_bits': SMS_config.getint('data_bits'),
+                                                 'termination': SMS_config['termination']})
 
     try:
         time.sleep(1000000)
