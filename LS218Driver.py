@@ -360,7 +360,6 @@ class LS218Driver(cmp.IEEE488_2_CommonCommands):
                     "readings": int(resp[4])
                     }
 
-#GetLoggedData is currently not working with LabView -> Parse Error: Unexpected lookahead type EOF
     class GetLoggedData(QueryCommand):
         cmd = "LOGVIEW?"
         arguments = "{}, {}"
