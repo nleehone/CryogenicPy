@@ -23,70 +23,116 @@ class LS218Driver(cmp.IEEE488_2_CommonCommands):
             raise ValueError("Input must be an integer between 0 and 9, instead got {}".format(input))
 
     @staticmethod
-    def validate_output_number(input):
+    def validate_digits_number(digits):
+        if "." in str(digits):
+            digits = str(digits).replace(".", "")
+
         try:
-            if int(input) not in [1, 2]:
-                raise ValueError("Input must be one of {}, instead got {}".format([1, 2], input))
+            if len(str(digits)) > 6:
+                raise ValueError("Input must have at most 6 digits {}, instead got {}".format(len(str(digits))))
         except ValueError as e:
-            raise ValueError("Input must be 1 or 2, instead got {}".format(input))
+            raise ValueError("Input must have at most 6 digits, instead got {}".format(len(str(digits))))
 
     @staticmethod
-    def validate_curve_data(input):
+    def validate_output_number(output):
         try:
-            if int(input) not in list(range(1, 10)) + list(range(21, 29)):
-                raise ValueError("Input must be valid curve. 1-5: Standard Diode Curves, 6-9: Standard Platinum Curves,"
-                                 " 21-28: User Curves.instead got {}".format(input))
+            if int(output) not in [1, 2]:
+                raise ValueError("Output must be one of {}, instead got {}".format([1, 2], output))
         except ValueError as e:
-            raise ValueError("Input must be valid curve. 1-5: Standard Diode Curves, 6-9: Standard Platinum Curves,"
-                                 "21-28: User Curves. 1 and 200, instead got {}".format(input))
+            raise ValueError("Output must be 1 or 2, instead got {}".format(output))
 
     @staticmethod
-    def validate_point_index(input):
+    def validate_mode(mode):
         try:
-            if int(input) not in range(1, 201):
-                raise ValueError("Input must be between 1 and 200, instead got {}".format(input))
+            if int(mode) not in [0, 1, 2]:
+                raise ValueError("Mode must be one of {}, instead got {}".format([0, 1, 2], mode))
         except ValueError as e:
-            raise ValueError("Input must be between 1 and 200, instead got {}".format(input))
+            raise ValueError("Mode must be 1 or 2, instead got {}".format(mode))
 
     @staticmethod
-    def validate_Month(input):
+    def validate_onoff(onoff):
         try:
-            if int(input) not in range(1, 13):
-                raise ValueError("Input must be {}, instead got {}".format(range(1,13),input))
+            if int(onoff) not in [0, 1]:
+                raise ValueError("off/on must be one of {}, instead got {}".format([0, 1], onoff))
         except ValueError as e:
-            raise ValueError("Input must be {}, instead got {}".format(range(1,13),input))
+            raise ValueError("off/on must be 0 or 1, instead got {}".format(onoff))
 
     @staticmethod
-    def validate_Day(input):
+    def validate_source(source):
         try:
-            if int(input) not in range(1, 32):
-                raise ValueError("Input must be {}, instead got {}".format(range(1, 32), input))
+            if int(source) not in [1, 2, 3, 4]:
+                raise ValueError("Source must be one of {}, instead got {}".format([1, 2], source))
         except ValueError as e:
-            raise ValueError("Input must be {}, instead got {}".format(range(1, 32), input))
+            raise ValueError("Source must be {}, instead got {}".format([1, 2, 3, 4], source))
 
     @staticmethod
-    def validate_Year(input):
-        try:
-            if int(input) not in range(0, 100):
-                raise ValueError("Input must be {}, instead got {}".format(range(0, 100), input))
-        except ValueError as e:
-            raise ValueError("Input must be {}, instead got {}".format(range(0, 100), input))
+    def validate_curve_data(curve, user_curve=False):
+            if user_curve:
+                try:
+                    if int(curve) not in range(21, 29):
+                        raise ValueError(
+                            "Input must be valid curve"
+                            " 21-28: User Curves. Instead got {}".format(curve))
+                except ValueError as e:
+                    raise ValueError("Input must be valid curve."
+                                 "21-28: User Curves. Instead got {}".format(curve))
+
+            else:
+                try:
+                    if int(curve) not in list(range(1, 10)) + list(range(21, 29)):
+                        raise ValueError("Input must be valid curve. 1-5: Standard Diode Curves, 6-9: Standard Platinum"
+                                         "Curves, 21-28: User Curves.instead got {}".format(curve))
+                except ValueError as e:
+                    raise ValueError("Input must be valid curve. 1-5: Standard Diode Curves, 6-9: Standard Platinum"
+                                 " Curves, 21-28: User Curves. Instead got {}".format(curve))
 
     @staticmethod
-    def validate_Hour(input):
+    def validate_point_index(point):
         try:
-            if int(input) not in range(0, 24):
-                raise ValueError("Input must be {}, instead got {}".format(range(0, 24), input))
+            if int(point) not in range(1, 201):
+                raise ValueError("Points must be between 1 and 200, instead got {}".format(point))
         except ValueError as e:
-            raise ValueError("Input must be {}, instead got {}".format(range(0, 24), input))
+            raise ValueError("Points must be between 1 and 200, instead got {}".format(point))
 
     @staticmethod
-    def validate_MinSec(input):
+    def validate_month(month):
         try:
-            if int(input) not in range(0, 60):
-                raise ValueError("Input must be {}, instead got {}".format(range(0, 60), input))
+            if int(month) not in range(1, 13):
+                raise ValueError("Month must be {}, instead got {}".format(range(1, 13), month))
         except ValueError as e:
-            raise ValueError("Input must be {}, instead got {}".format(range(0, 60), input))
+            raise ValueError("Month must be {}, instead got {}".format(range(1, 13), month))
+
+    @staticmethod
+    def validate_day(day):
+        try:
+            if int(day) not in range(1, 32):
+                raise ValueError("Day must be {}, instead got {}".format(range(1, 32), day))
+        except ValueError as e:
+            raise ValueError("day must be {}, instead got {}".format(range(1, 32), day))
+
+    @staticmethod
+    def validate_year(year):
+        try:
+            if int(year) not in range(0, 100):
+                raise ValueError("Year must be {}, instead got {}".format(range(0, 100), year))
+        except ValueError as e:
+            raise ValueError("Year must be {}, instead got {}".format(range(0, 100), year))
+
+    @staticmethod
+    def validate_hour(hour):
+        try:
+            if int(hour) not in range(0, 24):
+                raise ValueError("Hour must be {}, instead got {}".format(range(0, 24), hour))
+        except ValueError as e:
+            raise ValueError("Hour must be {}, instead got {}".format(range(0, 24), hour))
+
+    @staticmethod
+    def validate_minSec(minsec):
+        try:
+            if int(minsec) not in range(0, 60):
+                raise ValueError("Input must be {}, instead got {}".format(range(0, 60), minsec))
+        except ValueError as e:
+            raise ValueError("Input must be {}, instead got {}".format(range(0, 60), minsec))
 
     @staticmethod
     def validate_input_group(input):
@@ -186,7 +232,13 @@ class LS218Driver(cmp.IEEE488_2_CommonCommands):
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
-            return int(result)
+            if int(result) == 0:
+                return int(300)
+            elif int(result) == 1:
+                return int(1200)
+            elif int(result) == 2:
+                return int(9600)
+
 
     class GetCurveDataPoint(QueryCommand):
         cmd = "CRVPT?"
@@ -462,18 +514,85 @@ class LS218Driver(cmp.IEEE488_2_CommonCommands):
         def process_result(cls, driver, cmd, pars, result):
             return int(result)
 
+    class GetAudibleAlarm(QueryCommand):
+        cmd = "ALMB?"
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            return int(result)
+
     class SetDateTime(WriteCommand):
         cmd = "DATETIME"
         arguments = "{}, {}, {}, {}, {}, {}"
 
         @classmethod
         def _validate(cls, pars):
-            LS218Driver.validate_Month(pars[0])
-            LS218Driver.validate_Day(pars[1])
-            LS218Driver.validate_Year(pars[2])
-            LS218Driver.validate_Hour(pars[3])
-            LS218Driver.validate_MinSec(pars[4])
-            LS218Driver.validate_MinSec(pars[5])
+            LS218Driver.validate_month(pars[0])
+            LS218Driver.validate_day(pars[1])
+            LS218Driver.validate_year(pars[2])
+            LS218Driver.validate_hour(pars[3])
+            LS218Driver.validate_minSec(pars[4])
+            LS218Driver.validate_minSec(pars[5])
+
+    class SetAlarmParameters(WriteCommand):
+        cmd = "ALARM"
+        arguments = "{}, {}, {}, {}, {}, {}, {}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS218Driver.validate_input_number(pars[0])
+            LS218Driver.validate_offon_number(pars[1])
+            LS218Driver.validate_source(pars[2])
+            LS218Driver.validate_onoff(pars[6])
+
+    class SetAudibleAlarm(WriteCommand):
+        cmd = "ALMB"
+        arguments = "{}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS218Driver.validate_onoff(pars[0])
+
+    class SetClearAlarmStatus(WriteCommand):
+        cmd = "ALMRST"
+
+    class SetConfigureAnalogParameters(WriteCommand):
+        cmd = "ANALOG"
+        arguments = "{}, {}, {}, {}, {}, {}, {}, {}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS218Driver.validate_output_number(pars[0])
+            LS218Driver.validate_onoff(pars[1])
+            LS218Driver.validate_mode_number(pars[2])
+            LS218Driver.validate_input_number(pars[3])
+            LS218Driver.validate_source(pars[4])
+
+    class SetBaudRate(WriteCommand):
+        cmd = "BAUD"
+        arguments = "{}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS218Driver.validate_mode(pars[0])
+
+    class SetDeleteUserCurve(WriteCommand):
+        cmd = "CRVDEL"
+        arguments = "{}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS218Driver.validate_curve_data(pars[0], user_curve=True)
+
+    class SetConfigureCurveDataPoint(WriteCommand):
+        cmd = "CRVPT"
+        arguments = "{}, {}, {}, {}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS218Driver.validate_curve_data(pars[0], user_curve=True)
+            LS218Driver.validate_point_index(pars[1])
+
 
 if __name__ == '__main__':
     config = configparser.ConfigParser()
