@@ -34,6 +34,14 @@ class LS218Driver(cmp.IEEE488_2_CommonCommands):
             raise ValueError("Input must have at most 6 digits, instead got {}".format(len(str(digits))))
 
     @staticmethod
+    def validate_period_seconds(period):
+        try:
+            if int(period) not in range(1, 3601):
+                raise ValueError("Output must be between 1 and 3600, instead got {}".format([1, 2], period))
+        except ValueError as e:
+            raise ValueError("Output must be between 1 and 3600, instead got {}".format(period))
+
+    @staticmethod
     def validate_output_number(output):
         try:
             if int(output) not in [1, 2]:
@@ -66,12 +74,22 @@ class LS218Driver(cmp.IEEE488_2_CommonCommands):
             raise ValueError("off/on must be 0 or 1, instead got {}".format(onoff))
 
     @staticmethod
-    def validate_source(source):
+    def validate_xsource(source):
         try:
-            if int(source) not in [1, 2, 3, 4]:
-                raise ValueError("Source must be one of {}, instead got {}".format([1, 2, 3, 4], source))
+            if int(source) not in [1, 2, 3]:
+                raise ValueError("Source must be one of {}, instead got {}".format([1, 2, 3], source))
         except ValueError as e:
-            raise ValueError("Source must be {}, instead got {}".format([1, 2, 3, 4], source))
+            raise ValueError("Source must be {}, instead got {}".format([1, 2, 3], source))
+
+    @staticmethod
+    def validate_source(source, include_all=False):
+        min = 0 if include_all else 1
+        try:
+            if int(input) not in range(min, 5):
+                raise ValueError("Input must be one of {}, instead got {}".format(range(min, 5), input))
+        except ValueError as e:
+            raise ValueError("Input must be one of {}, instead got {}".format(range(min,5), input))
+
 
     @staticmethod
     def validate_source6(source):
@@ -689,6 +707,76 @@ class LS218Driver(cmp.IEEE488_2_CommonCommands):
         def _validate(cls, pars):
             LS218Driver.validate_input_number(pars[0])
             LS218Driver.validate_curve_data(pars[1])
+
+    class SetLinearEquation(WriteCommand):
+        cmd = "LINEAR"
+        arguments = "{}, {}, {}, {}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS218Driver.validate_input_number(pars[0])
+            LS218Driver.validate_xsource(pars[2])
+
+    class SetLogging(WriteCommand):
+        cmd = "LOG"
+        arguments = "{}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS218Driver.validate_onoff(pars[0])
+
+    class SetLogRecords(WriteCommand):
+        cmd = "LOGREAD"
+        arguments = "{}, {}, {}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS218Driver.validate_input_number(pars[0])
+            LS218Driver.validate_input_number(pars[1])
+            LS218Driver.validate_source(pars[2])
+
+    class SetLoggingParameters(WriteCommand):
+        cmd = "LOGSET"
+        arguments = "{}, {}, {}, {}, {}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS218Driver.validate_source(pars[0], include_all=True)
+            LS218Driver.validate_onoff(pars[1])
+            LS218Driver.validate_onoff(pars[2])
+            LS218Driver.validate_period_seconds(pars[3])
+            LS218Driver.validate_input_number(pars[4])
+
+    class SetMinMaxInput(WriteCommand):
+        cmd = "MNMX"
+        arguments = "{}, {}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS218Driver.validate_input_number(pars[0])
+            LS218Driver.validate_source(pars[1])
+
+    class SetMinMaxReset(WriteCommand):
+        cmd = "MNMXRST"
+
+    class SetRemoteInterfaceMode(WriteCommand):
+        cmd = "MNMX"
+        arguments = "{}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS218Driver.validate_mode(pars[0])
+
+    class SetRelayControl(WriteCommand):
+        cmd = "MNMX"
+        arguments = "{}, {}, {}, {}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS218Driver.validate_input_number(pars[0])
+            LS218Driver.validate_mode(pars[1])
+            LS218Driver.validate_input_number(pars[2])
+            LS218Driver.validate_mode(pars[3])
 
 if __name__ == '__main__':
     config = configparser.ConfigParser()
