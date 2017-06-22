@@ -50,6 +50,14 @@ class LS218Driver(cmp.IEEE488_2_CommonCommands):
             raise ValueError("Mode must be 1 or 2, instead got {}".format(mode))
 
     @staticmethod
+    def validate_terminator(mode):
+        try:
+            if int(mode) not in [0, 1, 2, 3]:
+                raise ValueError("Mode must be one of {}, instead got {}".format([0, 1, 2, 3], mode))
+        except ValueError as e:
+            raise ValueError("Mode must be one of {}, instead got {}".format([0, 1, 2, 3], mode))
+
+    @staticmethod
     def validate_onoff(onoff):
         try:
             if int(onoff) not in [0, 1]:
@@ -61,9 +69,25 @@ class LS218Driver(cmp.IEEE488_2_CommonCommands):
     def validate_source(source):
         try:
             if int(source) not in [1, 2, 3, 4]:
-                raise ValueError("Source must be one of {}, instead got {}".format([1, 2], source))
+                raise ValueError("Source must be one of {}, instead got {}".format([1, 2, 3, 4], source))
         except ValueError as e:
             raise ValueError("Source must be {}, instead got {}".format([1, 2, 3, 4], source))
+
+    @staticmethod
+    def validate_source6(source):
+        try:
+            if int(source) not in [1, 2, 3, 4, 5, 6]:
+                raise ValueError("Source must be one of {}, instead got {}".format([1, 2, 3, 4, 5, 6], source))
+        except ValueError as e:
+            raise ValueError("Source must be {}, instead got {}".format([1, 2, 3, 4, 5, 6], source))
+
+    @staticmethod
+    def validate_sensor_type(sensor):
+        try:
+            if int(sensor) not in [1, 2, 3, 4, 5]:
+                raise ValueError("Source must be one of {}, instead got {}".format([1, 2, 3, 4, 5], sensor))
+        except ValueError as e:
+            raise ValueError("Source must be {}, instead got {}".format([1, 2, 3, 4, 5, 6], sensor))
 
     @staticmethod
     def validate_curve_data(curve, user_curve=False):
@@ -79,7 +103,7 @@ class LS218Driver(cmp.IEEE488_2_CommonCommands):
 
             else:
                 try:
-                    if int(curve) not in list(range(1, 10)) + list(range(21, 29)):
+                    if int(curve) not in list(range(0, 10)) + list(range(21, 29)):
                         raise ValueError("Input must be valid curve. 1-5: Standard Diode Curves, 6-9: Standard Platinum"
                                          "Curves, 21-28: User Curves.instead got {}".format(curve))
                 except ValueError as e:
@@ -93,6 +117,22 @@ class LS218Driver(cmp.IEEE488_2_CommonCommands):
                 raise ValueError("Points must be between 1 and 200, instead got {}".format(point))
         except ValueError as e:
             raise ValueError("Points must be between 1 and 200, instead got {}".format(point))
+
+    @staticmethod
+    def validate_filter_points(points):
+        try:
+            if int(points) not in range(2, 65):
+                raise ValueError("Points must be between 2 and 65, instead got {}".format(points))
+        except ValueError as e:
+            raise ValueError("Points must be between 2 and 65, instead got {}".format(points))
+
+    @staticmethod
+    def validate_filter_window(window):
+        try:
+            if int(window) not in range(2, 65):
+                raise ValueError("Points must be between 2 and 65, instead got {}".format(window))
+        except ValueError as e:
+            raise ValueError("Points must be between 2 and 65, instead got {}".format(window))
 
     @staticmethod
     def validate_month(month):
@@ -593,6 +633,62 @@ class LS218Driver(cmp.IEEE488_2_CommonCommands):
             LS218Driver.validate_curve_data(pars[0], user_curve=True)
             LS218Driver.validate_point_index(pars[1])
 
+    class SetDisplayParameters(WriteCommand):
+        cmd = "DSPFLD"
+        arguments = "{}, {}, {}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS218Driver.validate_input_number(pars[0])
+            LS218Driver.validate_input_number(pars[1], include_all=True)
+            LS218Driver.validate_source6(pars[2])
+
+    class SetFilterParameters(WriteCommand):
+        cmd = "FILTER"
+        arguments = "{}, {}, {}, {}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS218Driver.validate_input_number(pars[0])
+            LS218Driver.validate_onoff(pars[1])
+            LS218Driver.validate_filter_points(pars[2])
+            LS218Driver.validate_window(pars[3])
+
+    class SetIEEE488(WriteCommand):
+        cmd = "IEEE"
+        arguments = "{}, {}, {}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS218Driver.validate_terminator(pars[0])
+            LS218Driver.validate_onoff(pars[1])
+
+    class SetInputControl(WriteCommand):
+        cmd = "INPUT"
+        arguments = "{}, {}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS218Driver.validate_terminator(pars[0])
+            LS218Driver.validate_onoff(pars[1])
+
+    class SetInputType(WriteCommand):
+        cmd = "INTYPE"
+        arguments = "{}, {}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS218Driver.validate_group(pars[0])
+            LS218Driver.validate_sensor_type(pars[1])
+
+    class SetInputCurveNumber(WriteCommand):
+        cmd = "INCRV"
+        arguments = "{}, {}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS218Driver.validate_input_number(pars[0])
+            LS218Driver.validate_curve_data(pars[1])
 
 if __name__ == '__main__':
     config = configparser.ConfigParser()
