@@ -13,6 +13,7 @@ class ZMQ_Component(object):
 
 
 class ZMQ_Req(ZMQ_Component):
+    """The ZMQ_Req class represents a request client, which sends messages to the server"""
     def __init__(self, port):
         super().__init__()
         self.socket = self.context.socket(zmq.REQ)
@@ -20,6 +21,7 @@ class ZMQ_Req(ZMQ_Component):
 
 
 class ZMQ_Resp(ZMQ_Component):
+    """The ZMQ_Resp class represents a response server, which sends responses to the client"""
     def __init__(self, port):
         super().__init__()
         self.socket = self.context.socket(zmq.REP)
