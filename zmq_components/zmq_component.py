@@ -19,6 +19,9 @@ class ZMQ_Req(ZMQ_Component):
         self.socket = self.context.socket(zmq.REQ)
         self.socket.connect(port)
 
+    def run(self):
+        pass
+
 
 class ZMQ_Resp(ZMQ_Component):
     """The ZMQ_Resp class represents a response server, which sends responses to the client"""
@@ -26,3 +29,34 @@ class ZMQ_Resp(ZMQ_Component):
         super().__init__()
         self.socket = self.context.socket(zmq.REP)
         self.socket.bind(port)
+
+    def run(self):
+        while True:
+            # Wait for next request from client (REQ)
+            message = self.receive_message()
+
+            response = self.process_message(message)
+
+            self.send_response(response)
+
+    def receive_message(self):
+        """
+        Gets a json message from the socket. This method can be overridden if a different
+        message type is required.
+        """
+        try:
+            return self.socket.recv_json()
+        except Exception:
+            logger.exception("receive_message failed to get a message")
+
+    def process_message(self, message):
+        """Default message processing: Returns the original message (echo server)"""
+        return message
+
+    def send_response(self, response):
+        """
+        Sends a json message back to the client. This method can be overridden if a different
+        message type is required.
+        """
+        self.socket.send_json(response)
+
