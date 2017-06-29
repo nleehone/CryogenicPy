@@ -7,7 +7,7 @@ import time
 LS350_port = 'tcp://*:5580'
 
 
-class LS350Driver(IEEE488_2_CommonCommands, CommandDriver):
+class LS350Driver(IEEE488_CommonCommands, CommandDriver):
     @staticmethod
     def validate_input_letter(input, include_all=True):
         valid = ["A", "B", "C", "D"]
