@@ -1,7 +1,7 @@
 import zmq
 import logging
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 logger.info("Current libzmq version is {}".format(zmq.zmq_version()))
 logger.info("Current pyzmq version is {}".format(zmq.__version__))
@@ -58,5 +58,6 @@ class ZMQ_Resp(ZMQ_Component):
         Sends a json message back to the client. This method can be overridden if a different
         message type is required.
         """
+        print(response)
         self.socket.send_json(response)
 

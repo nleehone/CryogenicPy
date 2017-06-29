@@ -46,6 +46,7 @@ class Driver(ZMQ_Resp):
                 results.append(result if result is not None else "")
         except AttributeError:
             logger.exception("Received message with improper format")
+        return results
 
     def execute_command(self, command):
         pass
@@ -167,9 +168,15 @@ class CommandDriver(Driver):
         if error is None:
             result = self.all_commands[cmd].execute(self, cmd, pars, self.resource)
         t1 = time.time()
-        command_result = {'t0': t0, 't1': t1, 'error': error, 'result': result}
+        command_result = {'t0': t0, 't1': t1, 'error': error if error is not None else '', 'result': result}
         logger.debug(command_result)
-        return command.result
+        return command_result, error
+
+    def check_command(self, cmd, pars):
+        try:
+            self.all_commands[cmd].validate(pars)
+        except:
+            logger.exception("Command not found!")
 
 
 class IEEE488_2_CommonCommands(object):
