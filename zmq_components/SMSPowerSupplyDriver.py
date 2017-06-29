@@ -11,6 +11,10 @@ def find_number(string):
     return re.search(r'[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?', string)
 
 
+def find_numbers(string):
+    return list(re.finditer(r'[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?', string))
+
+
 def convert_units(driver, value, units):
     instr_units, _ = driver.query(driver.GetUnits.command())
     if units == 'T':
