@@ -154,7 +154,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
-            int(result)
+           return int(result)
 
     class SetHeaterRange(WriteCommand):
         cmd = "RANGE"
@@ -164,6 +164,22 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
         def _validate(cls, pars):
             LS350Driver.validate_input_number(pars[0])
             LS350Driver.validate_heater_range(pars[0], pars[1])
+
+    class GetHeaterSetup(QueryCommand):
+        cmd = "HTRSET?"
+        arguments = "{}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS350Driver.validate_heater_output(pars[0])
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            resp = list(map(lambda x: x.strip(), result.split(',')))
+            return {"Resistance": int(resp[0]),
+                    "Max Current": int(resp[1]),
+                    "Max User": float(resp[2]),
+                    "Current/Power": int(resp[3])}
 
     @staticmethod
     def validate_heater_range(output, heater_range):
@@ -208,12 +224,34 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
         def _validate(cls, pars):
             LS350Driver.validate_input_number(pars[0])
 
+    class GetPID(QueryCommand):
+        cmd = "PID?"
+        arguments = "{}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS350Driver.validate_input_number(pars[0])
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            resp = list(map(lambda x: x.strip(), result.split(',')))
+            return {"P": float(resp[0]),
+                    "I": float(resp[1]),
+                    "D": float(resp[2])}
+
+    class SetPID(WriteCommand):
+        cmd = "PID"
+        arguments = "{},{},{},{}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS350Driver.validate_input_number(pars[0])
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
     driver = LS350Driver(driver_queue, {'library': '',
-                                                'address': 'ASRL6::INSTR',
+                                                'address': 'ASRL9::INSTR',
                                                 'baud_rate': 56000,
                                                 'parity': 'odd',
                                                 'data_bits': 7})
