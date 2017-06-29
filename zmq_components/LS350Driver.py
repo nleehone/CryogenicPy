@@ -2,9 +2,8 @@ from zmq_components import *
 from zmq_components import QueryCommand, WriteCommand
 import logging
 import time
-
-
-LS350_port = 'tcp://*:5580'
+import configparser
+import sys
 
 
 class LS350Driver(IEEE488_CommonCommands, CommandDriver):
@@ -205,10 +204,15 @@ class LS350Driver(IEEE488_CommonCommands, CommandDriver):
 
 
 if __name__ == '__main__':
-    driver = LS350Driver(LS350_port, {'library': '',
-                                      'address': 'ASRL6::INSTR',
-                                      'baud_rate': 56000,
-                                      'parity': 'odd',
-                                      'data_bits': 7})
+    config = configparser.ConfigParser()
+    config.read(sys.argv[1])
+    LS350_config = config['LS350']
+
+    driver = LS350Driver(LS350_config['port'], {'library': '',
+                                                       'address': LS350_config['address'],
+                                                       'baud_rate': LS350_config.getint('baud_rate'),
+                                                       'parity': LS350_config['parity'],
+                                                       'data_bits': LS350_config.getint('data_bits'),
+                                                       'termination': LS350_config.get('termination', 'CR')})
 
     driver.run()

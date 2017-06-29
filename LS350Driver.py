@@ -213,7 +213,7 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
     driver = LS350Driver(driver_queue, {'library': '',
-                                                'address': 'ASRL6::INSTR',
+                                                'address': 'ASRL9::INSTR',
                                                 'baud_rate': 56000,
                                                 'parity': 'odd',
                                                 'data_bits': 7})
