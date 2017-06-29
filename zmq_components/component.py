@@ -145,7 +145,7 @@ class CommandDriver(Driver):
         self.all_commands = {**self.get_commands, **self.set_commands}
 
     def split_cmd(self, cmd):
-        # Split the message into a command and a set of parameters
+        """Split the command string into a command and a set of parameters"""
         command, *pars = list(filter(None, map(lambda x: x.strip(), re.split(',| |\?', cmd))))
         # Put the question mark back in since it was removed in the split process
         if "?" in cmd:
@@ -153,19 +153,48 @@ class CommandDriver(Driver):
         return command, pars
 
     def execute_command(self, command):
-        t0 = time.time()
+        """Run the command and create a result object.
+        The result object will be of the form
+        {
+            t0: time before sending command to instrument. -1 if there was a validation error
+            t1: time after receiving reply from instrument. -1 if there was a validation error
+            error: error message caused by validation problem or execution problem
+            result: object containing the response from the instrument
+        }
+        """
         result = None
+        t0 = t1 = -1
         cmd, pars = self.split_cmd(command)
         error = self.check_command(cmd, pars)
+
         if error is None:
+            # Get time before sending command to instrument
+            t0 = time.time()
             result = self.all_commands[cmd].execute(self, cmd, pars, self.resource)
-        t1 = time.time()
-        command_result = {'t0': t0, 't1': t1, 'error': error, 'result': result}
+            # Get time after receiving reply from instrument
+            # Having both times allows us to get an estimate of the time at which the command ran in case the instrument
+            # does not report this
+            t1 = time.time()
+        command_result = {'t0': t0,
+                          't1': t1,
+                          'error': error or '',
+                          'result': result or ''}
         logger.debug(command_result)
         return command.result
 
+    def check_command(self, cmd, pars):
+        """Make sure that the command has the proper format and correct parameters"""
+        try:
+            self.all_commands[cmd].validate(pars)
+        except Exception as e:
+            logger.exception("Command '{}' failed validation with parameters {}".format(cmd, pars))
+            return e
 
-class IEEE488_2_CommonCommands(object):
+
+class IEEE488_CommonCommands(object):
+    """Common IEEE-488 commands are defined here. To use this class, include it in the Driver's definition:
+    class SomeDriver(IEEE488_CommonCommands, Driver):
+    """
     class ClearStatus(WriteCommand):
         cmd = "*CLS"
 
