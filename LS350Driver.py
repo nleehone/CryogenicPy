@@ -208,12 +208,38 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
         def _validate(cls, pars):
             LS350Driver.validate_input_number(pars[0])
 
+    @staticmethod
+    def validate_pid_pi(input):
+
+        if input < 0.1:
+            raise ValueError("Input must be between 0.1 and 1000, instead got {}".format(input))
+        if input > 1000.0:
+            raise ValueError("Input must be between 0.1 and 1000, instead got {}".format(input))
+
+    @staticmethod
+    def validate_pi_d(input):
+
+        if input < 0:
+            raise ValueError("Input must be between 0 and 200, instead got {}".format(input))
+        if input > 200.0:
+            raise ValueError("Input must be between 0 and 200, instead got {}".format(input))
+
+    class SetPID(WriteCommand):
+        cmd = "PID"
+        arguments = "{},{},{},{}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS350Driver.validate_input_number(pars[0])
+            LS350Driver.validate_pid_pi(pars[1])
+            LS350Driver.validate_pid_pi(pars[2])
+            LS350Driver.validate_pid_d(pars[3])
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
     driver = LS350Driver(driver_queue, {'library': '',
-                                                'address': 'ASRL6::INSTR',
+                                                'address': 'ASRL9::INSTR',
                                                 'baud_rate': 56000,
                                                 'parity': 'odd',
                                                 'data_bits': 7})
