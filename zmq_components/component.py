@@ -52,11 +52,15 @@ class Driver(ZMQ_Resp):
 
 
 def find_subclasses(obj, type):
+    """Find subclasses of an object that are of a particular type.
+    The type must have 'cmd' and 'calc_num_args' attributes
+    """
     results = {}
     for attrname in dir(obj.__class__):
         o = getattr(obj, attrname)
         try:
             if issubclass(o, type):
+                # Caclulate the number of arguments that are in the command definition
                 o.calc_num_args()
                 results[o.cmd] = o
         except TypeError:
