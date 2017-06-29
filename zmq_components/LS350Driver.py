@@ -40,7 +40,8 @@ class LS350Driver(IEEE488_CommonCommands, CommandDriver):
 
         @classmethod
         def _validate(cls, pars):
-            if pars[0] < 1 or pars[0] > 32:
+            brightness = int(pars[0])
+            if brightness < 1 or brightness > 32:
                 raise ValueError("Brightness must be between 1 and 32, instead got {}".format(pars[0]))
 
     class GetTemperatureCelsius(QueryCommand):
@@ -148,7 +149,7 @@ class LS350Driver(IEEE488_CommonCommands, CommandDriver):
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
-            int(result)
+            return int(result)
 
     class SetHeaterRange(WriteCommand):
         cmd = "RANGE"

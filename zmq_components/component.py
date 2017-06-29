@@ -82,7 +82,7 @@ class Command(object):
     cmd = ""
     cmd_alias = None
     arguments = ""
-    arguments_alias = None
+    arguments_alias = ""
     num_args = 0
 
     @classmethod
@@ -171,18 +171,18 @@ class CommandDriver(Driver):
         if error is None:
             # Get time before sending command to instrument
             t0 = time.time()
-			
+
             result = self.all_commands[cmd].execute(self, cmd, pars, self.resource)
-			
+
             # Get time after receiving reply from instrument
             # Having both times allows us to get an estimate of the time at which the command ran in case the instrument
             # does not report this
             t1 = time.time()
-			
+
         command_result = {'t0': t0,
                           't1': t1,
-                          'error': error or '',
-                          'result': result or ''}
+                          'error': str(error) if error is not None else '',
+                          'result': result if result is not None else ''}
 
         logger.debug(command_result)
         return command_result, error
@@ -206,6 +206,7 @@ class IEEE488_CommonCommands(object):
     """Common IEEE-488 commands are defined here. To use this class, include it in the Driver's definition:
     class SomeDriver(IEEE488_CommonCommands, Driver):
     """
+
     class ClearStatus(WriteCommand):
         cmd = "*CLS"
 
