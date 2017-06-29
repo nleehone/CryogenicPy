@@ -115,7 +115,7 @@ class Command(object):
 
 class WriteCommand(Command):
     @classmethod
-    def execute(cls, pars, resource):
+    def execute(cls, driver, cmd, pars, resource):
         if cls.cmd_alias is None:
             resource.write(cls.command(pars))
         else:
