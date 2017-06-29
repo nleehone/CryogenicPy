@@ -1,7 +1,6 @@
 import re
 import time
 import visa
-from enum import Enum
 from . import ZMQ_Resp, logger
 
 
@@ -78,18 +77,12 @@ def validate_range(par, low, high):
         raise ValueError("Parameter must be in the range [{}:{}], but got {}".format(low, high, par))
 
 
-class CommandType(Enum):
-    GET = 0
-    SET = 1
-
-
 class Command(object):
     cmd = ""
     cmd_alias = None
     arguments = ""
     arguments_alias = None
     num_args = 0
-    type = None
 
     @classmethod
     def calc_num_args(cls):
@@ -120,8 +113,6 @@ class Command(object):
 
 
 class WriteCommand(Command):
-    type = CommandType.SET
-
     @classmethod
     def execute(cls, pars, resource):
         if cls.cmd_alias is None:
@@ -132,8 +123,6 @@ class WriteCommand(Command):
 
 
 class QueryCommand(Command):
-    type = CommandType.GET
-
     @classmethod
     def process_result(cls, driver, cmd, pars, result):
         return result
