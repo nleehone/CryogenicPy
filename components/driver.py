@@ -129,11 +129,11 @@ class WriteCommand(Command):
     type = CommandType.SET
 
     @classmethod
-    def execute(cls, pars, method):
+    def execute(cls, driver, cmd, pars, resource):
         if cls.cmd_alias is None:
-            method(cls.command(pars))
+            resource.write(cls.command(pars))
         else:
-            method(cls.command_alias(pars))
+            resource.write(cls.command_alias(pars))
 
 
 class QueryCommand(Command):
@@ -144,21 +144,22 @@ class QueryCommand(Command):
         return result
 
     @classmethod
-    def execute(cls, driver, cmd, pars, method):
+    def execute(cls, driver, cmd, pars, resource):
         # Method is either resource.query or resource.write
         if cls.cmd_alias is None:
-            result = method(cls.command(pars))
+            result = resource.query(cls.command(pars))
         else:
-            result = method(cls.command_alias(pars))
+            result = resource.query(cls.command_alias(pars))
         return cls.process_result(driver, cmd, pars, result)
 
 
 class CommandDriver(Driver):
-    def __init__(self, driver_queue, driver_params, **kwargs):
+    def __init__(self, driver_queue, driver_params, command_delay=0.05, **kwargs):
         super().__init__(driver_queue, driver_params, **kwargs)
         self.get_commands = find_subclasses(self, QueryCommand)
         self.set_commands = find_subclasses(self, WriteCommand)
         self.all_commands = {**self.get_commands, **self.set_commands}
+        self.command_delay = command_delay
 
     def split_cmd(self, cmd):
         """Split the command string into a command and a set of parameters"""
@@ -193,6 +194,10 @@ class CommandDriver(Driver):
             # Having both times allows us to get an estimate of the time at which the command ran in case the instrument
             # does not report this
             t1 = time.time()
+
+            # Set commands take time to process so there must be a time delay
+            if cmd in self.set_commands:
+                time.sleep(self.command_delay)
 
         command_result = {'t0': t0,
                           't1': t1,
