@@ -4,9 +4,9 @@ import threading
 import logging
 
 
-LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
-              '-35s %(lineno) -5d: %(message)s')
-LOGGER = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+logger.info('Current pika version is {}'.format(pika.__version__))
 
 
 class RmqComponent(object):
@@ -21,8 +21,8 @@ class RmqComponent(object):
 
     def run(self):
         self.connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
-        LOGGER.info('Connection opened')
-        LOGGER.info('Creating a new channel')
+        logger.info('Connection opened')
+        logger.info('Creating a new channel')
         self.channel = self.connection.channel()
 
         # Initialise queues here - this is a user-supplied function
@@ -33,30 +33,36 @@ class RmqComponent(object):
                 # Process message queue events, returning as soon as possible.
                 self.connection.process_data_events(time_limit=0)
                 # Custom user processing code is provided by the 'process' method
-                self.process()
+                self.process_message()
         finally:
             self.channel.close()
-            LOGGER.info('Channel closed')
+            logger.info('Channel closed')
             self.connection.close()
-            LOGGER.info('Connection closed')
+            logger.info('Connection closed')
 
     def close(self):
-        LOGGER.info('Requesting close')
+        # Request that the component close in the next iteration of the run loop
+        logger.info('Requesting close')
         self.done = True
 
     def init_queues(self):
         pass
 
-    def process(self):
+    def process_message(self):
         pass
 
 
-class RmqComponentRPC(RmqComponent):
-    """The RmqComponentRPC class is used to send RPC messages to other RmqComponents and
-    process the returned messages.
+class RmqResp(RmqComponent):
+    """The RmqResp class represents a response server, which sends responses to the client"""
+
+
+class RmqReq(RmqComponent):
+    """The RmqReq class represents a request client, which sends messages to a server
+    and waits for a response.
 
     Messages are sent via send_direct_message, and are received via process_direct_reply
     """
+
     def send_direct_message(self, queue_name, message):
         """Wrapper for the basic_publish method specifically for sending a direct reply-to message"""
         self.channel.basic_publish(exchange='',
