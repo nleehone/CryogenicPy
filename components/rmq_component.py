@@ -1,5 +1,6 @@
 import pika
 import time
+import json
 import threading
 import logging
 
@@ -16,10 +17,10 @@ class RmqComponent(object):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.done = False   # Flag to tell if the thread should be shut down
-        thread = threading.Thread(target=self.run)
+        thread = threading.Thread(target=self.setup_and_run)
         thread.start()
 
-    def run(self):
+    def setup_and_run(self):
         self.connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
         logger.info('Connection opened')
         logger.info('Creating a new channel')
@@ -28,17 +29,14 @@ class RmqComponent(object):
         # Initialise queues here - this is a user-supplied function
         self.init_queues()
 
-        try:
-            while not self.done:
-                # Process message queue events, returning as soon as possible.
-                self.connection.process_data_events(time_limit=0)
-                # Custom user processing code is provided by the 'process' method
-                self.process_message()
-        finally:
-            self.channel.close()
-            logger.info('Channel closed')
-            self.connection.close()
-            logger.info('Connection closed')
+        self.run()
+
+    def run(self):
+        # Immediately exit if this is the base RMQ class
+        self.channel.close()
+        logger.info('Channel closed')
+        self.connection.close()
+        logger.info('Connection closed')
 
     def close(self):
         # Request that the component close in the next iteration of the run loop
@@ -48,12 +46,58 @@ class RmqComponent(object):
     def init_queues(self):
         pass
 
-    def process_message(self):
-        pass
+    def process_message(self, message):
+        return message
 
 
 class RmqResp(RmqComponent):
     """The RmqResp class represents a response server, which sends responses to the client"""
+    def __init__(self, queue_name, **kwargs):
+        self.response_server_queue = queue_name
+        super().__init__(**kwargs)
+
+    def init_queues(self):
+        self.channel.queue_declare(queue=self.response_server_queue)
+        logger.info('Declared queue: {}'.format(self.response_server_queue))
+
+    def run(self):
+        try:
+            while not self.done:
+                # Wait for next message from client
+                message, properties = self.receive_message()
+                # Custom user processing code is provided by the 'process_response' method
+                response = self.process_message(message)
+                self.send_response(response, properties)
+        finally:
+            self.channel.close()
+            logger.info('Channel closed')
+            self.connection.close()
+            logger.info('Connection closed')
+
+    def receive_message(self):
+        """
+        Gets a json message. This method can be overridden if a different message type is
+        required.
+        """
+        message = None
+        properties = None
+        while not self.done:
+            # Process message queue events, returning as soon as possible
+            self.connection.process_data_events(time_limit=0)
+
+            method, properties, body = self.channel.basic_get(queue=self.response_server_queue,
+                                                              no_ack=True)
+            # Return as soon as we get a valid message
+            if method is not None:
+                message = json.loads(body.decode('utf-8'))
+                logger.debug('Received a message: {}'.format(body))
+                break
+
+        return message, properties
+
+    def send_response(self, response, properties):
+        logger.debug('Sending response: {}'.format(json.dumps(response)))
+        self.channel.basic_publish('', routing_key=properties.reply_to, body=json.dumps(response))
 
 
 class RmqReq(RmqComponent):

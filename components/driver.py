@@ -1,4 +1,4 @@
-from . import rmq_component as rmq
+from .rmq_component import RmqResp, logger
 from .components import Component
 import time
 import json
@@ -21,7 +21,7 @@ def find_subclasses(obj, type):
     return results
 
 
-class DriverComponent(rmq.RmqComponent, Component):
+class Driver(RmqResp, Component):
     """Single point of communication with the instrument
 
     Having a common point of communication prevents multiple parts of the system from
@@ -31,13 +31,12 @@ class DriverComponent(rmq.RmqComponent, Component):
     """
     def __init__(self, driver_queue, driver_params, **kwargs):
         self.create_resource(driver_params)
-        self.driver_queue = driver_queue
-
-        super().__init__(**kwargs)
+        super().__init__(driver_queue, **kwargs)
 
     def create_resource(self, driver_params):
         rm = visa.ResourceManager(driver_params.get('library', ''))
         self.resource = rm.open_resource(driver_params['address'])
+
         if 'baud_rate' in driver_params:
             self.resource.baud_rate = driver_params['baud_rate']
         if 'data_bits' in driver_params:
@@ -58,88 +57,21 @@ class DriverComponent(rmq.RmqComponent, Component):
                 'LF': self.resource.LF,
             }.get(driver_params['termination'], driver_params['termination'])
 
-    def init_queues(self):
-        self.channel.queue_declare(queue=self.driver_queue)
-
-    def process(self):
-        method, properties, body = self.channel.basic_get(queue=self.driver_queue,
-                                                          no_ack=True)
-        if method is not None:
-            t0 = time.time()
-            cmd_method, result, error = self.process_command(body)
-            print("RESULT: ", result, error)
-            t1 = time.time()
-            reply = {"t0": t0,
-                     "t1": t1,
-                     "result": result,
-                     "error": ["".join(traceback.format_exception(etype=type(e),value=e,tb=e.__traceback__) if e else "") for e in error] if error is not None else ""}
-            print(body)
-            print(reply, result, error)
-            if cmd_method == 'QUERY' or cmd_method == 'READ':
-                print(properties.reply_to, reply)
-                self.channel.basic_publish('', routing_key=properties.reply_to, body=json.dumps(reply))
-
-    def process_command(self, body):
-        # METHOD: {READ, WRITE, QUERY}
-        body = json.loads(body.decode('utf-8'))
+    def process_message(self, message):
+        commands = message['CMD']
+        results = []
+        errors = []
         try:
-            method = body['METHOD']
-            if method not in ['WRITE', 'QUERY', 'READ']:
-                error = "Unrecognized METHOD: {}".format(method)
-                self.logger.warning(error)
-                return method, None, error
-
-            cmd = body['CMD']
-            print("COMMAND: ", cmd)
-            results = []
-            errors = []
-            for command in cmd.split(';'):
-                cmd, pars = self.split_cmd(command)
-                if method == 'WRITE':
-                    result, error = self.write(command)
-                elif method == 'QUERY':
-                    result, error = self.query(command)
-                elif method == 'READ':
-                    result, error = self.read(command)
-                else:
-                    raise AttributeError("Unrecognized METHOD")
+            for command in commands.split(';'):
+                result, error = self.execute_command(command)
                 errors.append(error if error is not None else "")
                 results.append(result if result is not None else "")
-            return method, results, errors
-        except AttributeError as e:
-            self.logger.warning("Invalid command format: {}".format(body))
+        except AttributeError:
+            logger.exception("Received message with improper format")
+        return results
 
-    def read(self, command):
-        return self.resource.read(), None
-
-    def write(self, command):
-        result = None
-        cmd, pars = self.split_cmd(command)
-        error = self.check_command(cmd, pars)
-        if error is None:
-            self.resource.write(command)
-        return result, error
-
-    def query(self, command):
-        result = None
-        cmd, pars = self.split_cmd(command)
-        error = self.check_command(cmd, pars)
-        if error is None:
-            result = self.resource.query(command)
-            result = self.process_result(cmd, pars, result)
-        return result, error
-
-    def split_cmd(self, cmd):
-        # Don't split the commands on the base Driver
-        return cmd, None
-
-    def check_command(self, cmd, pars):
-        # Don't check the command on the base Driver
-        return None
-
-    def process_result(self, cmd, pars, result):
-        # Don't modify the result for the base Driver
-        return result
+    def execute_command(self, command):
+        pass
 
 
 def validate_num_params(pars, num):
@@ -221,45 +153,68 @@ class QueryCommand(Command):
         return cls.process_result(driver, cmd, pars, result)
 
 
-class CommandDriver(DriverComponent):
+class CommandDriver(Driver):
     def __init__(self, driver_queue, driver_params, **kwargs):
         super().__init__(driver_queue, driver_params, **kwargs)
         self.get_commands = find_subclasses(self, QueryCommand)
         self.set_commands = find_subclasses(self, WriteCommand)
         self.all_commands = {**self.get_commands, **self.set_commands}
 
-    def write(self, command):
-        result = None
-        cmd, pars = self.split_cmd(command)
-        error = self.check_command(cmd, pars)
-        if error is None:
-            self.all_commands[cmd].execute(pars, self.resource.write)
-        return result, error
-
-    def query(self, command):
-        result = None
-        cmd, pars = self.split_cmd(command)
-        error = self.check_command(cmd, pars)
-        if error is None:
-            result = self.get_commands[cmd].execute(self, cmd, pars, self.resource.query)
-        return result, error
-
-    def check_command(self, cmd, pars):
-        try:
-            self.all_commands[cmd].validate(pars)
-        except Exception as e:
-            return e
-
     def split_cmd(self, cmd):
-        # Split the message into a command and a set of parameters
+        """Split the command string into a command and a set of parameters"""
         command, *pars = list(filter(None, map(lambda x: x.strip(), re.split(',| |\?', cmd))))
         # Put the question mark back in since it was removed in the split process
         if "?" in cmd:
             command += "?"
         return command, pars
 
+    def execute_command(self, command):
+        """Run the command and create a result object.
+        The result object will be of the form
+        {
+            t0: time before sending command to instrument. -1 if there was a validation error
+            t1: time after receiving reply from instrument. -1 if there was a validation error
+            error: error message caused by validation problem or execution problem
+            result: object containing the response from the instrument
+        }
+        """
+        result = None
+        t0 = t1 = -1
+        cmd, pars = self.split_cmd(command)
+        error = self.check_command(cmd, pars)
 
-class IEEE488_2_CommonCommands(CommandDriver):
+        if error is None:
+            # Get time before sending command to instrument
+            t0 = time.time()
+
+            result = self.all_commands[cmd].execute(self, cmd, pars, self.resource)
+
+            # Get time after receiving reply from instrument
+            # Having both times allows us to get an estimate of the time at which the command ran in case the instrument
+            # does not report this
+            t1 = time.time()
+
+        command_result = {'t0': t0,
+                          't1': t1,
+                          'error': str(error) if error is not None else '',
+                          'result': result if result is not None else ''}
+
+        logger.debug(command_result)
+        return command_result, error
+
+    def check_command(self, cmd, pars):
+        """Make sure that the command has the proper format and correct parameters"""
+        try:
+            self.all_commands[cmd].validate(pars)
+        except Exception as e:
+            logger.exception("Command '{}' failed validation with parameters {}".format(cmd, pars))
+            return e
+
+
+class IEEE488_CommonCommands(object):
+    """Common IEEE-488 commands are defined here. To use this class, include it in the Driver's definition:
+    class SomeDriver(IEEE488_CommonCommands, Driver):
+    """
     class ClearStatus(WriteCommand):
         cmd = "*CLS"
 
