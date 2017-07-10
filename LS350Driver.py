@@ -1,3 +1,7 @@
+import configparser
+
+import sys
+
 import components as cmp
 from components import QueryCommand, WriteCommand, CommandDriver
 import logging
@@ -243,13 +247,20 @@ class LS350Driver(cmp.IEEE488_CommonCommands, CommandDriver):
 
 
 if __name__ == '__main__':
+    config = configparser.ConfigParser()
+    config.read(sys.argv[1])
+    LS350_config = config['LS350']
+
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
-    driver = LS350Driver(driver_queue, {'library': '',
-                                                'address': 'ASRL9::INSTR',
-                                                'baud_rate': 56000,
-                                                'parity': 'odd',
-                                                'data_bits': 7}, LS350_command_delay)
+
+    driver = LS350Driver(LS350_config['queue_name'], {'library': '',
+                                                 'address': LS350_config['address'],
+                                                 'baud_rate': LS350_config.getint('baud_rate'),
+                                                 'parity': LS350_config['parity'],
+                                                 'data_bits': LS350_config.getint('data_bits'),
+                                                 'termination': LS350_config['termination']},
+                         LS350_config['command_delay'])
 
     try:
         time.sleep(1000000)
