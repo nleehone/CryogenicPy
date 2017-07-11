@@ -1,11 +1,12 @@
-import components as cmp
 from components import QueryCommand, WriteCommand
-import logging
 import time
 import configparser
 import sys
 
-class LS218Driver(cmp.IEEE488_2_CommonCommands):
+from zmq_components import IEEE488_CommonCommands
+
+
+class LS218Driver(IEEE488_CommonCommands):
     @staticmethod
     def validate_input_number(input, include_all=False):
         min = 0 if include_all else 1
