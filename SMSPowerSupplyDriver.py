@@ -1,6 +1,5 @@
 import components as cmp
 from components import QueryCommand
-import logging
 import time
 import re
 import configparser
