@@ -6,14 +6,6 @@ import time
 from components import QueryCommand, WriteCommand, CommandDriver
 from zmq_components import IEEE488_CommonCommands
 
-driver_queue = 'LS350.driver'
-controller_queue = 'LS350.controller'
-LS350_command_delay = 0.05
-
-LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
-              '-35s %(lineno) -5d: %(message)s')
-LOGGER = logging.getLogger(__name__)
-
 
 class LS350Driver(IEEE488_CommonCommands, CommandDriver):
     def __init__(self, driver_queue, driver_params, command_delay=0.05, **kwargs):
@@ -247,9 +239,6 @@ if __name__ == '__main__':
     config = configparser.ConfigParser()
     config.read(sys.argv[1])
     LS350_config = config['LS350']
-
-    logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
-
 
     driver = LS350Driver(LS350_config['queue_name'], {'library': '',
                                                  'address': LS350_config['address'],
