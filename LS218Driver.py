@@ -2,15 +2,8 @@ import components as cmp
 from components import QueryCommand, WriteCommand
 import logging
 import time
-import json
-import re
 import configparser
 import sys
-
-LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
-              '-35s %(lineno) -5d: %(message)s')
-LOGGER = logging.getLogger(__name__)
-
 
 class LS218Driver(cmp.IEEE488_2_CommonCommands):
     @staticmethod
@@ -480,8 +473,6 @@ if __name__ == '__main__':
     config = configparser.ConfigParser()
     config.read(sys.argv[1])
     LS218_config = config['LS218']
-
-    logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
     driver = LS218Driver(LS218_config['queue_name'], {'library': '',
                                                 'address': LS218_config['address'],
