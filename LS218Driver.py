@@ -186,7 +186,7 @@ class LS218Driver(IEEE488_CommonCommands, CommandDriver):
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
-            return int(result)
+            return (300, 1200, 9600)[int(result)]
 
     class GetCurveDataPoint(QueryCommand):
         cmd = "CRVPT?"
