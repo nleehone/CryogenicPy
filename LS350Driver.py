@@ -1,13 +1,10 @@
 import configparser
-
 import sys
-
-import components as cmp
-from components import QueryCommand, WriteCommand, CommandDriver
 import logging
 import time
-import json
-import re
+
+from components import QueryCommand, WriteCommand, CommandDriver
+from zmq_components import IEEE488_CommonCommands
 
 driver_queue = 'LS350.driver'
 controller_queue = 'LS350.controller'
@@ -18,7 +15,7 @@ LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
 LOGGER = logging.getLogger(__name__)
 
 
-class LS350Driver(cmp.IEEE488_CommonCommands, CommandDriver):
+class LS350Driver(IEEE488_CommonCommands, CommandDriver):
     def __init__(self, driver_queue, driver_params, command_delay=0.05, **kwargs):
         super().__init__(driver_queue, driver_params, command_delay, **kwargs)
         print(self.resource.query(self.GetIdentification.command()))
