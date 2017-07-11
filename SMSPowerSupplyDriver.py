@@ -29,12 +29,12 @@ def convert_units(driver, value, units):
 
 class SMSQueryCommand(QueryCommand):
     @classmethod
-    def execute(cls, driver, cmd, pars, method):
+    def execute(cls, driver, cmd, pars, resource):
         # Method is either resource.query or resource.write
         if cls.cmd_alias is None:
-            result = method(cls.command(pars))
+            result = resource.query(cls.command(pars))
         else:
-            result = method(cls.command_alias(pars))
+            result = resource.query(cls.command_alias(pars))
         # Remove the special \x13 character before processing
         return cls.process_result(driver, cmd, pars, result.replace('\x13', ''))
 
@@ -54,8 +54,8 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
         self.tesla_per_amp = tesla_per_amp
 
     def startup(self):
-        self.query(self.GetTeslaPerAmp.command())
-        self.query(self.GetMid.command(['T']))
+        self.resource.query(self.GetTeslaPerAmp.command())
+        self.resource.query(self.GetMid.command(['T']))
         print(self.tesla_per_amp)
 
     @staticmethod
@@ -136,9 +136,9 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
         arguments_alias = "{}"
 
         @classmethod
-        def execute(cls, driver, cmd, pars, method):
+        def execute(cls, driver, cmd, pars, resource):
             value = 1 if pars[0] == 'T' else 0
-            result = method(cls.cmd_alias + " " + cls.arguments_alias.format(value))
+            result = resource.query(cls.cmd_alias + " " + cls.arguments_alias.format(value))
             return cls.process_result(driver, cmd, pars, result)
 
         @classmethod
@@ -188,9 +188,9 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
             SMSPowerSupplyDriver.validate_units_T_A(pars[1])
 
         @classmethod
-        def execute(cls, driver, cmd, pars, method):
+        def execute(cls, driver, cmd, pars, resource):
             value = convert_units(driver, float(pars[0]), pars[1])
-            result = method(cls.cmd_alias + " " + cls.arguments_alias.format(value))
+            result = resource.query(cls.cmd_alias + " " + cls.arguments_alias.format(value))
             return cls.process_result(driver, cmd, pars, result)
 
         @classmethod
@@ -243,11 +243,11 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
             SMSPowerSupplyDriver.validate_units_T_A(pars[1])
 
         @classmethod
-        def execute(cls, driver, cmd, pars, method):
+        def execute(cls, driver, cmd, pars, resource):
             value = float(pars[0])
             if pars[1] == 'T':
                 value /= driver.tesla_per_amp
-            result = method(cls.cmd_alias + " " + cls.arguments_alias.format(value))
+            result = resource.query(cls.cmd_alias + " " + cls.arguments_alias.format(value))
             return cls.process_result(driver, cmd, pars, result)
 
         @classmethod
