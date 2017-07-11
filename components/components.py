@@ -26,7 +26,7 @@ class Component(object):
         self.logger.addHandler(handler)
 
 
-class ControllerComponent(rmq.RmqComponentRPC, Component):
+class ControllerComponent(rmq.RmqReq, Component):
     def __init__(self, driver_queue, controller_queue, **kwargs):
         super().__init__(**kwargs)
         self.driver_queue = driver_queue

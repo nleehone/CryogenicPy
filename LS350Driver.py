@@ -1,19 +1,17 @@
-import components as cmp
-from components import QueryCommand, WriteCommand
+import configparser
+import sys
 import logging
 import time
-import json
-import re
 
-driver_queue = 'LS350.driver'
-controller_queue = 'LS350.controller'
-
-LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
-              '-35s %(lineno) -5d: %(message)s')
-LOGGER = logging.getLogger(__name__)
+from components import QueryCommand, WriteCommand, CommandDriver
+from zmq_components import IEEE488_CommonCommands
 
 
-class LS350Driver(cmp.IEEE488_2_CommonCommands):
+class LS350Driver(IEEE488_CommonCommands, CommandDriver):
+    def __init__(self, driver_queue, driver_params, command_delay=0.05, **kwargs):
+        super().__init__(driver_queue, driver_params, command_delay, **kwargs)
+        print(self.resource.query(self.GetIdentification.command()))
+
     @staticmethod
     def validate_input_letter(input, include_all=True):
         valid = ["A", "B", "C", "D"]
@@ -95,6 +93,7 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
+            print("Result '{}'".format(result))
             return float(result)
 
     class GetRampParameters(QueryCommand):
@@ -237,13 +236,17 @@ class LS350Driver(cmp.IEEE488_2_CommonCommands):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+    config = configparser.ConfigParser()
+    config.read(sys.argv[1])
+    LS350_config = config['LS350']
 
-    driver = LS350Driver(driver_queue, {'library': '',
-                                                'address': 'ASRL9::INSTR',
-                                                'baud_rate': 56000,
-                                                'parity': 'odd',
-                                                'data_bits': 7})
+    driver = LS350Driver(LS350_config['queue_name'], {'library': '',
+                                                 'address': LS350_config['address'],
+                                                 'baud_rate': LS350_config.getint('baud_rate'),
+                                                 'parity': LS350_config['parity'],
+                                                 'data_bits': LS350_config.getint('data_bits'),
+                                                 'termination': LS350_config['termination']},
+                         LS350_config['command_delay'])
 
     try:
         time.sleep(1000000)
