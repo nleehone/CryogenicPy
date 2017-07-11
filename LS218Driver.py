@@ -1,5 +1,5 @@
 import components as cmp
-from components import QueryCommand, WriteCommand
+from components import QueryCommand, WriteCommand, IEEE488_CommonCommands, CommandDriver
 import logging
 import time
 import json
@@ -12,7 +12,7 @@ LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
 LOGGER = logging.getLogger(__name__)
 
 
-class LS218Driver(cmp.IEEE488_2_CommonCommands):
+class LS218Driver(IEEE488_CommonCommands, CommandDriver):
     @staticmethod
     def validate_input_number(input, include_all=False):
         min = 0 if include_all else 1
