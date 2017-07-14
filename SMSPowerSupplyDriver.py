@@ -1,15 +1,9 @@
 import components as cmp
-from components import QueryCommand, WriteCommand
-import logging
+from components import QueryCommand
 import time
-import json
 import re
 import configparser
 import sys
-
-LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
-              '-35s %(lineno) -5d: %(message)s')
-LOGGER = logging.getLogger(__name__)
 
 
 def find_number(string):
@@ -492,8 +486,6 @@ if __name__ == '__main__':
     config = configparser.ConfigParser()
     config.read(sys.argv[1])
     SMS_config = config['SMSPowerSupply']
-
-    logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
     driver = SMSPowerSupplyDriver(SMS_config['queue_name'], {'library': '',
                                                  'address': SMS_config['address'],
