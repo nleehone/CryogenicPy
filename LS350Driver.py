@@ -277,7 +277,7 @@ if __name__ == '__main__':
                                                  'parity': LS350_config['parity'],
                                                  'data_bits': LS350_config.getint('data_bits'),
                                                  'termination': LS350_config['termination']},
-                         LS350_config['command_delay'])
+                         float(LS350_config['command_delay']))
 
     try:
         time.sleep(1000000)
