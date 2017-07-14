@@ -106,7 +106,10 @@ class Command(object):
         if pars is None:
             pars = []
         cls.validate(pars)
-        return (cls.cmd + " " + cls.arguments.format(*pars)).strip()
+        if cls.cmd_alias is not "":
+            return (cls.cmd_alias + " " + cls.arguments_alias.format(*pars)).strip()
+        else:
+            return (cls.cmd + " " + cls.arguments.format(*pars)).strip()
 
     @classmethod
     def validate(cls, pars):
@@ -117,23 +120,13 @@ class Command(object):
     def _validate(cls, pars):
         pass
 
-    @classmethod
-    def command_alias(cls, pars=None):
-        if pars is None:
-            pars = []
-        cls.validate(pars)
-        return (cls.cmd_alias + " " + cls.arguments_alias.format(*pars)).strip()
-
 
 class WriteCommand(Command):
     type = CommandType.SET
 
     @classmethod
     def execute(cls, driver, cmd, pars, resource):
-        if cls.cmd_alias is None:
-            resource.write(cls.command(pars))
-        else:
-            resource.write(cls.command_alias(pars))
+        resource.write(cls.command(pars))
 
 
 class QueryCommand(Command):
@@ -146,10 +139,7 @@ class QueryCommand(Command):
     @classmethod
     def execute(cls, driver, cmd, pars, resource):
         # Method is either resource.query or resource.write
-        if cls.cmd_alias is None:
-            result = resource.query(cls.command(pars))
-        else:
-            result = resource.query(cls.command_alias(pars))
+        result = resource.query(cls.command(pars))
         return cls.process_result(driver, cmd, pars, result)
 
 

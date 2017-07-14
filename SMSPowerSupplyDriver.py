@@ -21,7 +21,14 @@ def find_numbers(string):
 
 
 def convert_units(driver, value, units):
-    instr_units, _ = driver.query(driver.GetUnits.command())
+    result = driver.resource.query(driver.GetUnits.command())
+    found = re.search(r'(TESLA|AMPS)', result)
+    if found:
+        instr_units = found.group()
+        instr_units = 'T' if instr_units == 'TESLA' else 'A'
+    else:
+        raise ValueError("Could not get the instrument's units")
+
     if units == 'T':
         if instr_units == 'A':
             value /= driver.tesla_per_amp
@@ -34,11 +41,7 @@ def convert_units(driver, value, units):
 class SMSQueryCommand(QueryCommand):
     @classmethod
     def execute(cls, driver, cmd, pars, resource):
-        # Method is either resource.query or resource.write
-        if cls.cmd_alias is None:
-            result = resource.query(cls.command(pars))
-        else:
-            result = resource.query(cls.command_alias(pars))
+        result = resource.query(cls.command(pars))
         # Remove the special \x13 character before processing
         return cls.process_result(driver, cmd, pars, result.replace('\x13', ''))
 
@@ -71,7 +74,8 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
         self.tesla_per_amp = tesla_per_amp
 
     def startup(self):
-        self.resource.query(self.GetTeslaPerAmp.command())
+        self.tesla_per_amp = float(self.GetTeslaPerAmp.execute(self, self.GetTeslaPerAmp.cmd, [], self.resource))
+
         self.resource.query(self.GetMid.command(['T']))
         print(self.tesla_per_amp)
 
