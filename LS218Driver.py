@@ -1,12 +1,12 @@
-from components import QueryCommand, WriteCommand
+import components as cmp
+from components import QueryCommand, WriteCommand, IEEE488_CommonCommands, CommandDriver
+import logging
 import time
 import configparser
 import sys
 
-from zmq_components import IEEE488_CommonCommands
 
-
-class LS218Driver(IEEE488_CommonCommands):
+class LS218Driver(IEEE488_CommonCommands, CommandDriver):
     @staticmethod
     def validate_input_number(input, include_all=False):
         min = 0 if include_all else 1
@@ -180,7 +180,7 @@ class LS218Driver(IEEE488_CommonCommands):
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
-            return int(result)
+            return (300, 1200, 9600)[int(result)]
 
     class GetCurveDataPoint(QueryCommand):
         cmd = "CRVPT?"

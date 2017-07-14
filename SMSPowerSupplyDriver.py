@@ -10,8 +10,19 @@ def find_number(string):
     return re.search(r'[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?', string)
 
 
+def find_numbers(string):
+    return list(re.finditer(r'[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?', string))
+
+
 def convert_units(driver, value, units):
-    instr_units, _ = driver.query(driver.GetUnits.command())
+    result = driver.resource.query(driver.GetUnits.command())
+    found = re.search(r'(TESLA|AMPS)', result)
+    if found:
+        instr_units = found.group()
+        instr_units = 'T' if instr_units == 'TESLA' else 'A'
+    else:
+        raise ValueError("Could not get the instrument's units")
+
     if units == 'T':
         if instr_units == 'A':
             value /= driver.tesla_per_amp
@@ -23,12 +34,8 @@ def convert_units(driver, value, units):
 
 class SMSQueryCommand(QueryCommand):
     @classmethod
-    def execute(cls, driver, cmd, pars, method):
-        # Method is either resource.query or resource.write
-        if cls.cmd_alias is None:
-            result = method(cls.command(pars))
-        else:
-            result = method(cls.command_alias(pars))
+    def execute(cls, driver, cmd, pars, resource):
+        result = resource.query(cls.command(pars))
         # Remove the special \x13 character before processing
         return cls.process_result(driver, cmd, pars, result.replace('\x13', ''))
 
@@ -36,7 +43,20 @@ class SMSQueryCommand(QueryCommand):
 class SMSPowerSupplyDriver(cmp.CommandDriver):
     """The SMS power supply takes a long time to respond to commands. It is therefore important to use a query for every
     command in order to ensure that we don't overload the instrument with too many commands. The instrument should only
-    be communicated with once the previous command has returned."""
+    be communicated with once the previous command has returned.
+
+    Since there is no way to get the setpoint on the SMS120C we have to use a workaround. The MID point can be used to
+    track the setpoint as long as MAX is set to the maximum value that the power supply can output. Then MID can be
+    set to the same value as MAX to initiate a ramp to maximum value. This works the same way for ZERO.
+    """
+
+    def write(self, command):
+        time.sleep(1)
+        return 0, None
+
+    def query(self, command):
+        time.sleep(1)
+        return 0, None
 
     def __init__(self, driver_queue, driver_params, **kwargs):
         super().__init__(driver_queue, driver_params, **kwargs)
@@ -48,14 +68,20 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
         self.tesla_per_amp = tesla_per_amp
 
     def startup(self):
-        self.query(self.GetTeslaPerAmp.command())
-        self.query(self.GetMid.command(['T']))
+        self.tesla_per_amp = float(self.GetTeslaPerAmp.execute(self, self.GetTeslaPerAmp.cmd, [], self.resource))
+
+        self.resource.query(self.GetMid.command(['T']))
         print(self.tesla_per_amp)
 
     @staticmethod
     def validate_units_T_A(units):
         if units not in ['T', 'A']:
             raise ValueError("Units must be either T or A, instead got {}".format(units))
+
+    @staticmethod
+    def validate_ramp_to(ramp_to):
+        if ramp_to not in ["ZERO", "MID", "MAX"]:
+            raise ValueError("Ramp-to must be one of ['ZERO', 'MID', 'MAX'], instead got {}".format(ramp_to))
 
     @staticmethod
     def strip_message_type(message):
@@ -98,6 +124,38 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
                     result, cls.cmd))
             return 0 if found.group() == 'OFF' else 1
 
+    class GetOutput(SMSQueryCommand):
+        cmd = "OUTP?"
+        arguments = "{}"
+        cmd_alias = "GET OUTPUT"
+        arguments_alias = ""
+
+        #@classmethod
+        #def execute(cls, driver, cmd, pars, method):
+        ##    value = convert_units(driver, float(pars[0]), pars[1])
+        #    result = method(cls.cmd_alias + " " + cls.arguments_alias.format(value))
+        #    return cls.process_result(driver, cmd, pars, result)
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
+            values = find_numbers(result)
+            units = re.search(r'(TESLA|AMPS)', result)
+            if not values or not units:
+                raise ValueError("The result '{}' did not match the expected format for the '{}' command".
+                                 format(result, cls.cmd_alias))
+            output = float(values[0].group())
+            units = units.group()
+
+            if pars[0] == 'T' and units == 'AMPS':
+                output *= driver.tesla_per_amp
+            elif pars[0] == 'A' and units == 'TESLA':  # pars[0] == 'A' is the only other option because we validated the command before this
+                output /= driver.tesla_per_amp
+
+            return {'Output': output,
+                    'Voltage': float(values[1].group()),
+                    'Persistent': 0}
+
     class SetFilterStatus(SMSQueryCommand):
         cmd = "FILTER"
         arguments = "{}"
@@ -130,9 +188,9 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
         arguments_alias = "{}"
 
         @classmethod
-        def execute(cls, driver, cmd, pars, method):
+        def execute(cls, driver, cmd, pars, resource):
             value = 1 if pars[0] == 'T' else 0
-            result = method(cls.cmd_alias + " " + cls.arguments_alias.format(value))
+            result = resource.query(cls.cmd_alias + " " + cls.arguments_alias.format(value))
             return cls.process_result(driver, cmd, pars, result)
 
         @classmethod
@@ -182,9 +240,9 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
             SMSPowerSupplyDriver.validate_units_T_A(pars[1])
 
         @classmethod
-        def execute(cls, driver, cmd, pars, method):
+        def execute(cls, driver, cmd, pars, resource):
             value = convert_units(driver, float(pars[0]), pars[1])
-            result = method(cls.cmd_alias + " " + cls.arguments_alias.format(value))
+            result = resource.query(cls.cmd_alias + " " + cls.arguments_alias.format(value))
             return cls.process_result(driver, cmd, pars, result)
 
         @classmethod
@@ -194,6 +252,20 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
                 return result
             return ""
 
+    class GetSetpoint(GetMid):
+        """The get setpoint command returns the MID value in order to get around the limitation of not being able to
+        query the setpoint on the SMS120C. This command is purely for clarity when using the driver and does exactly the
+        same thing that "GET MID" does
+        """
+        cmd = "SETP?"
+
+    class SetSetpoing(SetMid):
+        """The set setpoint command sets the MID value in order to get around the limitation of not being able to
+        query the setpoint on the SMS120C. This command is purely for clarity when using the driver and does exactly the
+        same thing that "SET MID" does
+        """
+        cmd = "SETP"
+
     class GetMax(GetMid):
         cmd = "MAX?"
         cmd_alias = "GET MAX"
@@ -201,6 +273,23 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
     class SetMax(SetMid):
         cmd = "MAX"
         cmd_alias = "SET MAX"
+
+    class SetRamp(SMSQueryCommand):
+        cmd = "RAMP"
+        arguments = "{}"
+
+        @classmethod
+        def _validate(cls, pars):
+            SMSPowerSupplyDriver.validate_ramp_to(pars[0])
+
+        @classmethod
+        def execute(cls, driver, cmd, pars, method):
+            result = driver.resource.write(cls.command(pars))
+            return cls.process_result(driver, cmd, pars, '')
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            return result
 
     class GetRampRate(SMSQueryCommand):
         cmd = "RATE?"
@@ -237,11 +326,11 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
             SMSPowerSupplyDriver.validate_units_T_A(pars[1])
 
         @classmethod
-        def execute(cls, driver, cmd, pars, method):
+        def execute(cls, driver, cmd, pars, resource):
             value = float(pars[0])
             if pars[1] == 'T':
                 value /= driver.tesla_per_amp
-            result = method(cls.cmd_alias + " " + cls.arguments_alias.format(value))
+            result = resource.query(cls.cmd_alias + " " + cls.arguments_alias.format(value))
             return cls.process_result(driver, cmd, pars, result)
 
         @classmethod
@@ -294,6 +383,27 @@ class SMSPowerSupplyDriver(cmp.CommandDriver):
         arguments = "{}"
         cmd_alias = "SET HEATER"
         arguments_alias = "{}"
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            return ""
+
+    class GetPauseState(SMSQueryCommand):
+        cmd = "PAUSE?"
+        cmd_alias = "PAUSE"
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
+            status = re.search(r'(ON|OFF)', result)
+            if not status:
+                raise ValueError("The result '{}' did not match the expected format for the '{}' command".
+                                 format(result, cls.cmd_alias))
+            return 0 if status.group() == 'OFF' else 1
+
+    class SetPauseState(SMSQueryCommand):
+        cmd = "PAUSE"
+        arguments = "{}"
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):

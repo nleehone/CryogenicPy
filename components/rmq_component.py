@@ -57,6 +57,7 @@ class RmqResp(RmqComponent):
         super().__init__(**kwargs)
 
     def init_queues(self):
+        self.channel.queue_delete(queue=self.response_server_queue)
         self.channel.queue_declare(queue=self.response_server_queue)
         logger.info('Declared queue: {}'.format(self.response_server_queue))
 

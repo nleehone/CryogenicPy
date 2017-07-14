@@ -153,7 +153,7 @@ class LS350Driver(IEEE488_CommonCommands, CommandDriver):
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
-            int(result)
+           return int(result)
 
     class SetHeaterRange(WriteCommand):
         cmd = "RANGE"
@@ -163,6 +163,22 @@ class LS350Driver(IEEE488_CommonCommands, CommandDriver):
         def _validate(cls, pars):
             LS350Driver.validate_input_number(pars[0])
             LS350Driver.validate_heater_range(pars[0], pars[1])
+
+    class GetHeaterSetup(QueryCommand):
+        cmd = "HTRSET?"
+        arguments = "{}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS350Driver.validate_heater_output(pars[0])
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            resp = list(map(lambda x: x.strip(), result.split(',')))
+            return {"Resistance": int(resp[0]),
+                    "Max Current": int(resp[1]),
+                    "Max User": float(resp[2]),
+                    "Current/Power": int(resp[3])}
 
     @staticmethod
     def validate_heater_range(output, heater_range):
@@ -222,6 +238,21 @@ class LS350Driver(IEEE488_CommonCommands, CommandDriver):
             raise ValueError("Input must be between 0 and 200, instead got {}".format(input))
         if float(input) > 200.0:
             raise ValueError("Input must be between 0 and 200, instead got {}".format(input))
+
+    class GetPID(QueryCommand):
+        cmd = "PID?"
+        arguments = "{}"
+
+        @classmethod
+        def _validate(cls, pars):
+            LS350Driver.validate_input_number(pars[0])
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            resp = list(map(lambda x: x.strip(), result.split(',')))
+            return {"P": float(resp[0]),
+                    "I": float(resp[1]),
+                    "D": float(resp[2])}
 
     class SetPID(WriteCommand):
         cmd = "PID"
