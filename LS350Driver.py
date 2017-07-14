@@ -4,7 +4,7 @@ import logging
 import time
 
 from components import QueryCommand, WriteCommand, CommandDriver
-from zmq_components import IEEE488_CommonCommands
+from components.ieee488_common_commands import IEEE488_CommonCommands
 
 
 class LS350Driver(IEEE488_CommonCommands, CommandDriver):

@@ -1,4 +1,4 @@
-from zmq_components import WriteCommand, QueryCommand, validate_range
+from components import WriteCommand, QueryCommand, validate_range
 
 
 class IEEE488_CommonCommands(object):
