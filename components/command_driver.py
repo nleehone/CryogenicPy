@@ -51,6 +51,17 @@ class Command(object):
         if pars is None:
             pars = []
         cls.validate(pars)
+        if cls.cmd_alias is None:
+            return (cls.cmd + " " + cls.arguments.format(*pars)).strip()
+        else:
+            return (cls.cmd_alias + " " + cls.arguments_alias.format(*pars)).strip()
+
+    @classmethod
+    def raw_command(cls, pars=None):
+        cls.calc_num_args()
+        if pars is None:
+            pars = []
+        cls.validate(pars)
         return (cls.cmd + " " + cls.arguments.format(*pars)).strip()
 
     @classmethod

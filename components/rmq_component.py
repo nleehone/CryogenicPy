@@ -24,9 +24,9 @@ class RmqComponent(object):
 
 class RmqResp(RmqComponent):
     """The RmqResp class represents a response server, which sends responses to the client"""
-    def __init__(self, queue_name, **kwargs):
+    def __init__(self, server_queue, **kwargs):
         super().__init__(**kwargs)
-        self.response_server_queue = queue_name
+        self.response_server_queue = server_queue
         thread = threading.Thread(target=self.setup_and_run_server)
         thread.start()
 
@@ -104,7 +104,14 @@ class RmqReq(RmqComponent):
     """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.setup_client()
+        self.server_response = None
+        self.client_connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+        logger.info('Client Connection opened')
+        logger.info('Creating a new client channel')
+        self.client_channel = self.client_connection.channel()
+
+        thread = threading.Thread(target=self.setup_client)
+        thread.start()
 
     def close(self):
         super().close()
@@ -113,11 +120,6 @@ class RmqReq(RmqComponent):
         self.done = True
 
     def setup_client(self):
-        self.client_connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
-        logger.info('Client Connection opened')
-        logger.info('Creating a new client channel')
-        self.client_channel = self.client_connection.channel()
-
         # Initialise queues here - this is a user-supplied function
         self.init_client_queues()
 
@@ -132,9 +134,11 @@ class RmqReq(RmqComponent):
 
     def init_client_queues(self):
         """Create the direct-reply consumer"""
-        super().init_queues()
         self.client_channel.basic_consume(self.process_direct_reply, queue='amq.rabbitmq.reply-to', no_ack=True)
+        self.client_channel.start_consuming()
 
     def process_direct_reply(self, channel, method, properties, body):
         """User-supplied function that processes the direct-reply events"""
-        pass
+        print(body)
+        self.server_response = body
+        #self.client_channel.stop_consuming()

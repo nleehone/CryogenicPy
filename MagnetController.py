@@ -37,8 +37,18 @@ class MagnetController(ControllerComponent):
         self.hall_sensor_driver = hall_sensor_driver
         self.state_machine = StateMachine(self, StateInitialize)
 
+    def wait_for_response(self):
+        while self.server_response is None:
+            pass
+        response = self.server_response
+        self.server_response = None
+        return response
+
     def get_mid(self):
-        self.send_direct_message(self.power_supply_driver, SMSPowerSupplyDriver.GetMid.command(['T']))
+        self.send_direct_message(self.power_supply_driver,
+                                 json.dumps({"CMD": SMSPowerSupplyDriver.GetMid.raw_command(['T'])}))
+
+        return self.wait_for_response()
 
     def process_message(self, message):
         commands = message['CMD']
@@ -106,6 +116,9 @@ if __name__ == '__main__':
                                   MC_config['magnet_temperature_driver'],
                                   MC_config['hall_sensor_driver'])
     try:
+        while True:
+            controller.get_mid()
+            time.sleep(0.5)
         controller.run_state_machine()
     except KeyboardInterrupt:
         pass

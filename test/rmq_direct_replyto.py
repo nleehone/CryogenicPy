@@ -1,4 +1,4 @@
-import rmq_component as rmq
+import components.rmq_component as rmq
 import logging
 import time
 import pika
@@ -8,12 +8,12 @@ LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
 LOGGER = logging.getLogger(__name__)
 
 
-class Producer(rmq.RmqComponentRPC):
+class Producer(rmq.RmqReq):
     def __init__(self):
         super().__init__()
         self.count = 0
 
-    def process(self):
+    def run(self):
         message = 'Some work to be done: ' + str(self.count)
 
         LOGGER.info('Sent message: ' + message)
@@ -27,19 +27,19 @@ class Producer(rmq.RmqComponentRPC):
         LOGGER.info("Producer got back: " + str(body))
 
 
-class Consumer(rmq.RmqComponent):
+class Consumer(rmq.RmqResp):
     def process(self):
         pass
-        method, properties, body = self.channel.basic_get(queue='test_queue',
+        method, properties, body = self.server_channel.basic_get(queue='test_queue',
                                                           no_ack=True)
         if method is not None:
             LOGGER.info("Consumer received: " + str((method, str(properties), body)))
             reply = 'Replying to: ' + str((method, str(properties), body))
             LOGGER.info("Consumer sending reply: " + reply)
-            self.channel.basic_publish('', routing_key=properties.reply_to, body=reply)
+            self.server_channel.basic_publish('', routing_key=properties.reply_to, body=reply)
 
     def init_queues(self):
-        self.channel.queue_declare(queue="test_queue")
+        self.server_channel.queue_declare(queue="test_queue")
 
 
 if __name__ == '__main__':
@@ -47,9 +47,10 @@ if __name__ == '__main__':
 
     # Produce messages and put them in the queue
     comp1 = Producer()
-    comp2 = Consumer()
+    comp2 = Consumer('test_queue')
     try:
-        time.sleep(10)
+        comp1.run()
+        time.sleep(1)
     except KeyboardInterrupt:
         pass
     finally:
