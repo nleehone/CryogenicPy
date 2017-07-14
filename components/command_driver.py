@@ -47,6 +47,7 @@ class Command(object):
 
     @classmethod
     def command(cls, pars=None):
+        cls.calc_num_args()
         if pars is None:
             pars = []
         cls.validate(pars)
