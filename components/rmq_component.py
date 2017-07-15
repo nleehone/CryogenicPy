@@ -19,7 +19,9 @@ class RmqComponent(object):
         self.done = False   # Flag to tell if the thread should be shut down
 
     def close(self):
-        pass
+        # Request that the component close in the next iteration of the run loop
+        logger.info('Requesting server close')
+        self.done = True
 
 
 class RmqResp(RmqComponent):
@@ -34,12 +36,6 @@ class RmqResp(RmqComponent):
         self.server_channel.queue_delete(queue=self.response_server_queue)
         self.server_channel.queue_declare(queue=self.response_server_queue)
         logger.info('Declared queue: {}'.format(self.response_server_queue))
-
-    def close(self):
-        super().close()
-        # Request that the component close in the next iteration of the run loop
-        logger.info('Requesting server close')
-        self.done = True
 
     def setup_and_run_server(self):
         self.server_connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
@@ -113,12 +109,6 @@ class RmqReq(RmqComponent):
         thread = threading.Thread(target=self.setup_client)
         thread.start()
 
-    def close(self):
-        super().close()
-        # Request that the component close in the next iteration of the run loop
-        logger.info('Requesting server close')
-        self.done = True
-
     def setup_client(self):
         # Initialise queues here - this is a user-supplied function
         self.init_client_queues()
@@ -139,6 +129,4 @@ class RmqReq(RmqComponent):
 
     def process_direct_reply(self, channel, method, properties, body):
         """User-supplied function that processes the direct-reply events"""
-        print(body)
         self.server_response = body
-        #self.client_channel.stop_consuming()
