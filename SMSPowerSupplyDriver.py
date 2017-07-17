@@ -1,5 +1,5 @@
 import components as cmp
-from components import QueryCommand
+from components import QueryCommand, DriverQueryCommand, DriverCommandRunner
 import time
 import re
 import configparser
@@ -32,15 +32,15 @@ def convert_units(driver, value, units):
     return value
 
 
-class SMSQueryCommand(QueryCommand):
+class SMSQueryCommand(DriverQueryCommand):
     @classmethod
-    def execute(cls, driver, cmd, pars, resource):
-        result = resource.query(cls.command(pars))
+    def execute(cls, driver, cmd, pars):
+        result = driver.resource.query(cls.command(pars))
         # Remove the special \x13 character before processing
         return cls.process_result(driver, cmd, pars, result.replace('\x13', ''))
 
 
-class SMSPowerSupplyDriver(cmp.CommandRunner):
+class SMSPowerSupplyDriver(DriverCommandRunner):
     """The SMS power supply takes a long time to respond to commands. It is therefore important to use a query for every
     command in order to ensure that we don't overload the instrument with too many commands. The instrument should only
     be communicated with once the previous command has returned.

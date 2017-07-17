@@ -1,14 +1,14 @@
-from components import WriteCommand, QueryCommand, validate_range
+from components import WriteCommand, QueryCommand, validate_range, DriverWriteCommand, DriverQueryCommand
 
 
 class IEEE488_CommonCommands(object):
     """Common IEEE-488 commands are defined here. To use this class, include it in the Driver's definition:
     class SomeDriver(IEEE488_CommonCommands, Driver):
     """
-    class ClearStatus(WriteCommand):
+    class ClearStatus(DriverWriteCommand):
         cmd = "*CLS"
 
-    class SetEventStatusEnable(WriteCommand):
+    class SetEventStatusEnable(DriverWriteCommand):
         cmd = "*ESE"
         arguments = "{}"
         num_args = 1
@@ -17,57 +17,57 @@ class IEEE488_CommonCommands(object):
         def _validate(cls, pars):
             validate_range(pars[0], 0, 255)
 
-    class GetEventStatusEnable(QueryCommand):
+    class GetEventStatusEnable(DriverQueryCommand):
         cmd = "*ESE?"
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
             return int(result)
 
-    class GetEventStatusRegister(QueryCommand):
+    class GetEventStatusRegister(DriverQueryCommand):
         cmd = "*ESR?"
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
             return int(result)
 
-    class GetIdentification(QueryCommand):
+    class GetIdentification(DriverQueryCommand):
         cmd = "*IDN?"
 
-    class SetOperationComplete(WriteCommand):
+    class SetOperationComplete(DriverWriteCommand):
         cmd = "*OPC"
 
-    class GetOperationComplete(QueryCommand):
+    class GetOperationComplete(DriverQueryCommand):
         cmd = "*OPC?"
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
             return int(result)
 
-    class ResetInstrument(WriteCommand):
+    class ResetInstrument(DriverWriteCommand):
         cmd = "*RST"
 
-    class SetServiceRequestEnable(WriteCommand):
+    class SetServiceRequestEnable(DriverWriteCommand):
         cmd = "*SRE"
         arguments = "{}"
         num_args = 1
 
-    class GetServiceRequestEnable(QueryCommand):
+    class GetServiceRequestEnable(DriverQueryCommand):
         cmd = "*SRE?"
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
             return int(result)
 
-    class GetStatusByte(QueryCommand):
+    class GetStatusByte(DriverQueryCommand):
         cmd = "*STB?"
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
             return int(result)
 
-    class SelfTest(WriteCommand):
+    class SelfTest(DriverWriteCommand):
         cmd = "*TST?"
 
-    class Wait(WriteCommand):
+    class Wait(DriverWriteCommand):
         cmd = "*WAI"
