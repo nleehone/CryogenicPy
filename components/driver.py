@@ -53,4 +53,4 @@ class Driver(RmqResp, Component):
         return results
 
     def execute_command(self, command):
-        pass
+        raise NotImplementedError
