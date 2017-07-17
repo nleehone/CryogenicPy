@@ -68,7 +68,7 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
         self.tesla_per_amp = tesla_per_amp
 
     def startup(self):
-        self.tesla_per_amp = float(self.GetTeslaPerAmp.execute(self, self.GetTeslaPerAmp.cmd, [], self.resource))
+        self.tesla_per_amp = float(self.GetTeslaPerAmp.execute(self, self.GetTeslaPerAmp.cmd, []))
 
         self.resource.query(self.GetMid.command(['T']))
         print(self.tesla_per_amp)

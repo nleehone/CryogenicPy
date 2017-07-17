@@ -1,7 +1,5 @@
-import components as cmp
-from components import QueryCommand, WriteCommand, IEEE488_CommonCommands, CommandRunner, DriverCommandRunner, \
+from components import IEEE488_CommonCommands, DriverCommandRunner, \
     DriverQueryCommand, DriverWriteCommand
-import logging
 import time
 import configparser
 import sys
@@ -91,7 +89,7 @@ class LS218Driver(IEEE488_CommonCommands, DriverCommandRunner):
         except ValueError as e:
             raise ValueError("Input group must be {}, instead got {}".format(['A', 'B'], input))
 
-    class GetSensorReading(cmp.DriverQueryCommand):
+    class GetSensorReading(DriverQueryCommand):
         cmd = "SRDG?"
         arguments = "{}"
 

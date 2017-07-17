@@ -84,9 +84,25 @@ class Command(object):
 class WriteCommand(Command):
     type = CommandType.SET
 
+    @classmethod
+    def execute(cls, component, cmd, pars):
+        pass
+
+    @classmethod
+    def process_results(cls, component, cmd, pars, result):
+        return result
+
 
 class QueryCommand(Command):
     type = CommandType.GET
+
+    @classmethod
+    def execute(cls, component, cmd, pars):
+        pass
+
+    @classmethod
+    def process_results(cls, component, cmd, pars, result):
+        return result
 
 
 class CommandRunner(RmqResp):
