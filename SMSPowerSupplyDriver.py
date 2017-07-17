@@ -40,7 +40,7 @@ class SMSQueryCommand(QueryCommand):
         return cls.process_result(driver, cmd, pars, result.replace('\x13', ''))
 
 
-class SMSPowerSupplyDriver(cmp.CommandDriver):
+class SMSPowerSupplyDriver(cmp.CommandRunner):
     """The SMS power supply takes a long time to respond to commands. It is therefore important to use a query for every
     command in order to ensure that we don't overload the instrument with too many commands. The instrument should only
     be communicated with once the previous command has returned.

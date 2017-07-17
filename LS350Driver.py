@@ -3,11 +3,11 @@ import sys
 import logging
 import time
 
-from components import QueryCommand, WriteCommand, CommandDriver
+from components import QueryCommand, WriteCommand, CommandRunner
 from components.ieee488_common_commands import IEEE488_CommonCommands
 
 
-class LS350Driver(IEEE488_CommonCommands, CommandDriver):
+class LS350Driver(IEEE488_CommonCommands, CommandRunner):
     def __init__(self, driver_queue, driver_params, command_delay=0.05, **kwargs):
         super().__init__(driver_queue, driver_params, command_delay, **kwargs)
         print(self.resource.query(self.GetIdentification.command()))

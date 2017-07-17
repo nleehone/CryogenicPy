@@ -1,12 +1,12 @@
 import components as cmp
-from components import QueryCommand, WriteCommand, IEEE488_CommonCommands, CommandDriver
+from components import QueryCommand, WriteCommand, IEEE488_CommonCommands, CommandRunner
 import logging
 import time
 import configparser
 import sys
 
 
-class LS218Driver(IEEE488_CommonCommands, CommandDriver):
+class LS218Driver(IEEE488_CommonCommands, CommandRunner):
     @staticmethod
     def validate_input_number(input, include_all=False):
         min = 0 if include_all else 1

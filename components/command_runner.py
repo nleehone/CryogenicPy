@@ -109,7 +109,7 @@ class QueryCommand(Command):
         return cls.process_result(driver, cmd, pars, result)
 
 
-class CommandDriver(Driver):
+class CommandRunner(Driver):
     def __init__(self, driver_queue, driver_params, command_delay=0.05, **kwargs):
         super().__init__(driver_queue, driver_params, **kwargs)
         self.get_commands = find_subclasses(self, QueryCommand)
