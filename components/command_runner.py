@@ -2,7 +2,7 @@ import re
 import time
 from enum import Enum
 
-from components import Driver, logger
+from components import Driver, logger, RmqResp
 
 
 def find_subclasses(obj, type):
@@ -84,36 +84,19 @@ class Command(object):
 class WriteCommand(Command):
     type = CommandType.SET
 
-    @classmethod
-    def execute(cls, driver, cmd, pars, resource):
-        if cls.cmd_alias is None:
-            resource.write(cls.command(pars))
-        else:
-            resource.write(cls.command_alias(pars))
-
 
 class QueryCommand(Command):
     type = CommandType.GET
 
-    @classmethod
-    def process_result(cls, driver, cmd, pars, result):
-        return result
 
-    @classmethod
-    def execute(cls, driver, cmd, pars, resource):
-        # Method is either resource.query or resource.write
-        if cls.cmd_alias is None:
-            result = resource.query(cls.command(pars))
-        else:
-            result = resource.query(cls.command_alias(pars))
-        return cls.process_result(driver, cmd, pars, result)
+class CommandRunner(RmqResp):
+    query_class = QueryCommand
+    write_class = WriteCommand
 
-
-class CommandDriver(Driver):
-    def __init__(self, driver_queue, driver_params, command_delay=0.05, **kwargs):
-        super().__init__(driver_queue, driver_params, **kwargs)
-        self.get_commands = find_subclasses(self, QueryCommand)
-        self.set_commands = find_subclasses(self, WriteCommand)
+    def __init__(self, command_queue='', command_delay=0.05, **kwargs):
+        super().__init__(command_queue, **kwargs)
+        self.get_commands = find_subclasses(self, self.query_class)
+        self.set_commands = find_subclasses(self, self.write_class)
         self.all_commands = {**self.get_commands, **self.set_commands}
         self.command_delay = command_delay
 
@@ -124,6 +107,19 @@ class CommandDriver(Driver):
         if "?" in cmd:
             command += "?"
         return command, pars
+
+    def process_message(self, message):
+        commands = message['CMD']
+        results = []
+        errors = []
+        try:
+            for command in commands.split(';'):
+                result, error = self.execute_command(command)
+                errors.append(error if error is not None else "")
+                results.append(result if result is not None else "")
+        except AttributeError:
+            logger.exception("Received message with improper format")
+        return results
 
     def execute_command(self, command):
         """Run the command and create a result object.
@@ -144,7 +140,7 @@ class CommandDriver(Driver):
             # Get time before sending command to instrument
             t0 = time.time()
 
-            result = self.all_commands[cmd].execute(self, cmd, pars, self.resource)
+            result = self.all_commands[cmd].execute(self, cmd, pars)
 
             # Get time after receiving reply from instrument
             # Having both times allows us to get an estimate of the time at which the command ran in case the instrument
@@ -170,3 +166,38 @@ class CommandDriver(Driver):
         except Exception as e:
             logger.exception("Command '{}' failed validation with parameters {}".format(cmd, pars))
             return e
+
+
+class DriverWriteCommand(WriteCommand):
+    @classmethod
+    def execute(cls, driver, cmd, pars):
+        if cls.cmd_alias is None:
+            driver.resource.write(cls.command(pars))
+        else:
+            driver.resource.write(cls.command_alias(pars))
+
+
+class DriverQueryCommand(QueryCommand):
+    @classmethod
+    def process_result(cls, driver, cmd, pars, result):
+        return result
+
+    @classmethod
+    def execute(cls, driver, cmd, pars):
+        # Method is either resource.query or resource.write
+        if cls.cmd_alias is None:
+            result = driver.resource.query(cls.command(pars))
+        else:
+            result = driver.resource.query(cls.command_alias(pars))
+        return cls.process_result(driver, cmd, pars, result)
+
+
+class DriverCommandRunner(CommandRunner, Driver):
+    query_class = DriverQueryCommand
+    write_class = DriverWriteCommand
+
+    def __init__(self, driver_queue, driver_params, command_delay=0.05, **kwargs):
+        super().__init__(command_queue=driver_queue,
+                         command_delay=command_delay,
+                         driver_params=driver_params,
+                         **kwargs)

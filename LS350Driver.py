@@ -3,11 +3,11 @@ import sys
 import logging
 import time
 
-from components import QueryCommand, WriteCommand, CommandDriver
+from components import DriverQueryCommand, DriverWriteCommand, CommandRunner, DriverCommandRunner
 from components.ieee488_common_commands import IEEE488_CommonCommands
 
 
-class LS350Driver(IEEE488_CommonCommands, CommandDriver):
+class LS350Driver(IEEE488_CommonCommands, DriverCommandRunner):
     def __init__(self, driver_queue, driver_params, command_delay=0.05, **kwargs):
         super().__init__(driver_queue, driver_params, command_delay, **kwargs)
         print(self.resource.query(self.GetIdentification.command()))
@@ -31,14 +31,14 @@ class LS350Driver(IEEE488_CommonCommands, CommandDriver):
         if int(output) not in [1, 2]:
             raise ValueError("Heater output must be one of [1, 2], instead got {}".format(output))
 
-    class GetBrightness(QueryCommand):
+    class GetBrightness(DriverQueryCommand):
         cmd = "BRIGT?"
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
             return int(result)
 
-    class SetBrightness(WriteCommand):
+    class SetBrightness(DriverWriteCommand):
         cmd = "BRIGT"
         arguments = "{}"
 
@@ -47,7 +47,7 @@ class LS350Driver(IEEE488_CommonCommands, CommandDriver):
             if pars[0] < 1 or pars[0] > 32:
                 raise ValueError("Brightness must be between 1 and 32, instead got {}".format(pars[0]))
 
-    class GetTemperatureCelsius(QueryCommand):
+    class GetTemperatureCelsius(DriverQueryCommand):
         cmd = "CRDG?"
         arguments = "{}"
 
@@ -59,7 +59,7 @@ class LS350Driver(IEEE488_CommonCommands, CommandDriver):
         def process_result(cls, driver, cmd, pars, result):
             return float(result)
 
-    class GetTemperatureKelvin(QueryCommand):
+    class GetTemperatureKelvin(DriverQueryCommand):
         cmd = "KRDG?"
         arguments = "{}"
 
@@ -71,7 +71,7 @@ class LS350Driver(IEEE488_CommonCommands, CommandDriver):
         def process_result(cls, driver, cmd, pars, result):
             return float(result)
 
-    class GetSensorReading(QueryCommand):
+    class GetSensorReading(DriverQueryCommand):
         cmd = "SRDG?"
         arguments = "{}"
 
@@ -83,7 +83,7 @@ class LS350Driver(IEEE488_CommonCommands, CommandDriver):
         def process_result(cls, driver, cmd, pars, result):
             return float(result)
 
-    class GetHeaterOutputPercent(QueryCommand):
+    class GetHeaterOutputPercent(DriverQueryCommand):
         cmd = "HTR?"
         arguments = "{}"
 
@@ -96,7 +96,7 @@ class LS350Driver(IEEE488_CommonCommands, CommandDriver):
             print("Result '{}'".format(result))
             return float(result)
 
-    class GetRampParameters(QueryCommand):
+    class GetRampParameters(DriverQueryCommand):
         cmd = "RAMP?"
         arguments = "{}"
 
@@ -110,7 +110,7 @@ class LS350Driver(IEEE488_CommonCommands, CommandDriver):
             return {"On/Off": int(resp[0]),
                     "Rate": float(resp[1])}
 
-    class SetRampParameters(WriteCommand):
+    class SetRampParameters(DriverWriteCommand):
         cmd = "RAMP"
         arguments = "{},{},{}"
 
@@ -131,7 +131,7 @@ class LS350Driver(IEEE488_CommonCommands, CommandDriver):
         if rate < 0 or rate > 100:
             raise ValueError("Ramp rate must be between 0 and 100. 0 means infinite ramp rate.")
 
-    class GetRampStatus(QueryCommand):
+    class GetRampStatus(DriverQueryCommand):
         cmd = "RAMPST?"
         arguments = "{}"
 
@@ -143,7 +143,7 @@ class LS350Driver(IEEE488_CommonCommands, CommandDriver):
         def process_result(cls, driver, cmd, pars, result):
             return int(result[0])
 
-    class GetHeaterRange(QueryCommand):
+    class GetHeaterRange(DriverQueryCommand):
         cmd = "RANGE?"
         arguments = "{}"
 
@@ -155,7 +155,7 @@ class LS350Driver(IEEE488_CommonCommands, CommandDriver):
         def process_result(cls, driver, cmd, pars, result):
            return int(result)
 
-    class SetHeaterRange(WriteCommand):
+    class SetHeaterRange(DriverWriteCommand):
         cmd = "RANGE"
         arguments = "{},{}"
 
@@ -164,7 +164,7 @@ class LS350Driver(IEEE488_CommonCommands, CommandDriver):
             LS350Driver.validate_input_number(pars[0])
             LS350Driver.validate_heater_range(pars[0], pars[1])
 
-    class GetHeaterSetup(QueryCommand):
+    class GetHeaterSetup(DriverQueryCommand):
         cmd = "HTRSET?"
         arguments = "{}"
 
@@ -191,7 +191,7 @@ class LS350Driver(IEEE488_CommonCommands, CommandDriver):
             if heater_range not in [0, 1]:
                 raise ValueError("Heater range must be either 0 or 1 for outputs [3, 4], instead got {}".format(heater_range))
 
-    class GetReadingStatus(QueryCommand):
+    class GetReadingStatus(DriverQueryCommand):
         cmd = "RDGST?"
         arguments = "{}"
 
@@ -203,7 +203,7 @@ class LS350Driver(IEEE488_CommonCommands, CommandDriver):
         def process_result(cls, driver, cmd, pars, result):
             return int(result)
 
-    class GetSetpoint(QueryCommand):
+    class GetSetpoint(DriverQueryCommand):
         cmd = "SETP?"
         arguments = "{}"
 
@@ -215,7 +215,7 @@ class LS350Driver(IEEE488_CommonCommands, CommandDriver):
         def process_result(cls, driver, cmd, pars, result):
             return float(result)
 
-    class SetSetpoint(WriteCommand):
+    class SetSetpoint(DriverWriteCommand):
         cmd = "SETP"
         arguments = "{},{}"
 
@@ -239,7 +239,7 @@ class LS350Driver(IEEE488_CommonCommands, CommandDriver):
         if float(input) > 200.0:
             raise ValueError("Input must be between 0 and 200, instead got {}".format(input))
 
-    class GetPID(QueryCommand):
+    class GetPID(DriverQueryCommand):
         cmd = "PID?"
         arguments = "{}"
 
@@ -254,7 +254,7 @@ class LS350Driver(IEEE488_CommonCommands, CommandDriver):
                     "I": float(resp[1]),
                     "D": float(resp[2])}
 
-    class SetPID(WriteCommand):
+    class SetPID(DriverWriteCommand):
         cmd = "PID"
         arguments = "{},{},{},{}"
 

@@ -1,12 +1,13 @@
 import components as cmp
-from components import QueryCommand, WriteCommand, IEEE488_CommonCommands, CommandDriver
+from components import QueryCommand, WriteCommand, IEEE488_CommonCommands, CommandRunner, DriverCommandRunner, \
+    DriverQueryCommand, DriverWriteCommand
 import logging
 import time
 import configparser
 import sys
 
 
-class LS218Driver(IEEE488_CommonCommands, CommandDriver):
+class LS218Driver(IEEE488_CommonCommands, DriverCommandRunner):
     @staticmethod
     def validate_input_number(input, include_all=False):
         min = 0 if include_all else 1
@@ -90,7 +91,7 @@ class LS218Driver(IEEE488_CommonCommands, CommandDriver):
         except ValueError as e:
             raise ValueError("Input group must be {}, instead got {}".format(['A', 'B'], input))
 
-    class GetSensorReading(QueryCommand):
+    class GetSensorReading(cmp.DriverQueryCommand):
         cmd = "SRDG?"
         arguments = "{}"
 
@@ -112,7 +113,7 @@ class LS218Driver(IEEE488_CommonCommands, CommandDriver):
     class GetCelsiusReading(GetSensorReading):
         cmd = "CRDG?"
 
-    class GetAlarmParameters(QueryCommand):
+    class GetAlarmParameters(DriverQueryCommand):
         cmd = "ALARM?"
         arguments = "{}"
 
@@ -130,7 +131,7 @@ class LS218Driver(IEEE488_CommonCommands, CommandDriver):
                     "deadband": float(resp[4]),
                     "latch": int(resp[5])}
 
-    class GetAlarmStatus(QueryCommand):
+    class GetAlarmStatus(DriverQueryCommand):
         cmd = "ALARMST?"
         arguments = "{}"
 
@@ -144,7 +145,7 @@ class LS218Driver(IEEE488_CommonCommands, CommandDriver):
             return {"high": int(resp[0]),
                     "low": int(resp[1])}
 
-    class GetAnalogOutputParameters(QueryCommand):
+    class GetAnalogOutputParameters(DriverQueryCommand):
         cmd = "ANALOG?"
         arguments = "{}"
 
@@ -163,7 +164,7 @@ class LS218Driver(IEEE488_CommonCommands, CommandDriver):
                     "low": float(resp[5]),
                     "manual": float(resp[6])}
 
-    class GetAnalogOutputData(QueryCommand):
+    class GetAnalogOutputData(DriverQueryCommand):
         cmd = "AOUT?"
         arguments = "{}"
 
@@ -175,14 +176,14 @@ class LS218Driver(IEEE488_CommonCommands, CommandDriver):
         def process_result(cls, driver, cmd, pars, result):
             return float(result)
 
-    class GetBaudRate(QueryCommand):
+    class GetBaudRate(DriverQueryCommand):
         cmd = "BAUD?"
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
             return (300, 1200, 9600)[int(result)]
 
-    class GetCurveDataPoint(QueryCommand):
+    class GetCurveDataPoint(DriverQueryCommand):
         cmd = "CRVPT?"
         arguments = "{}, {}"
 
@@ -197,7 +198,7 @@ class LS218Driver(IEEE488_CommonCommands, CommandDriver):
             return {"units": float(resp[0]),
                     "temp": float(resp[1])}
 
-    class GetDateTime(QueryCommand):
+    class GetDateTime(DriverQueryCommand):
         cmd = "DATETIME?"
 
         @classmethod
@@ -211,7 +212,7 @@ class LS218Driver(IEEE488_CommonCommands, CommandDriver):
                     "ss": int(resp[5])
                     }
 
-    class GetDisplayedField(QueryCommand):
+    class GetDisplayedField(DriverQueryCommand):
         cmd = "DISPFLD?"
         arguments = "{}"
 
@@ -226,7 +227,7 @@ class LS218Driver(IEEE488_CommonCommands, CommandDriver):
                     "temp": int(resp[1])
                     }
 
-    class GetFilterParameters(QueryCommand):
+    class GetFilterParameters(DriverQueryCommand):
         cmd = "FILTER?"
         arguments = "{}"
 
@@ -242,7 +243,7 @@ class LS218Driver(IEEE488_CommonCommands, CommandDriver):
                     "window": int(resp[2])
                     }
 
-    class GetIEEEParameters(QueryCommand):
+    class GetIEEEParameters(DriverQueryCommand):
         cmd = "IEEE?"
 
         @classmethod
@@ -253,7 +254,7 @@ class LS218Driver(IEEE488_CommonCommands, CommandDriver):
                     "address": int(resp[2])
                     }
 
-    class GetCurveNumber(QueryCommand):
+    class GetCurveNumber(DriverQueryCommand):
         cmd = "INCRV?"
         arguments = "{}"
 
@@ -265,7 +266,7 @@ class LS218Driver(IEEE488_CommonCommands, CommandDriver):
         def process_result(cls, driver, cmd, pars, result):
             return int(result)
 
-    class GetControlParameter(QueryCommand):
+    class GetControlParameter(DriverQueryCommand):
         cmd = "INPUT?"
         arguments = "{}"
 
@@ -277,7 +278,7 @@ class LS218Driver(IEEE488_CommonCommands, CommandDriver):
         def process_result(cls, driver, cmd, pars, result):
             return int(result)
 
-    class GetSensorType(QueryCommand):
+    class GetSensorType(DriverQueryCommand):
         cmd = "INTYPE?"
         arguments = "{}"
 
@@ -289,14 +290,14 @@ class LS218Driver(IEEE488_CommonCommands, CommandDriver):
         def process_result(cls, driver, cmd, pars, result):
             return int(result)
 
-    class GetKeyStatus(QueryCommand):
+    class GetKeyStatus(DriverQueryCommand):
         cmd = "KEYST?"
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
             return int(result)
 
-    class GetLinearEqParameters(QueryCommand):
+    class GetLinearEqParameters(DriverQueryCommand):
         cmd = "LINEAR?"
         arguments = "{}"
 
@@ -312,21 +313,21 @@ class LS218Driver(IEEE488_CommonCommands, CommandDriver):
                     "b": float(resp[2])
                     }
 
-    class GetLogStatus(QueryCommand):
+    class GetLogStatus(DriverQueryCommand):
         cmd = "LOG?"
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
             return int(result)
 
-    class GetLogNumber(QueryCommand):
+    class GetLogNumber(DriverQueryCommand):
         cmd = "LOGNUM?"
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
             return int(result)
 
-    class GetLogRecord(QueryCommand):
+    class GetLogRecord(DriverQueryCommand):
         cmd = "LOGREAD?"
         arguments = "{}"
 
@@ -341,7 +342,7 @@ class LS218Driver(IEEE488_CommonCommands, CommandDriver):
                     "source": int(resp[1])
                     }
 
-    class GetLoggingParameters(QueryCommand):
+    class GetLoggingParameters(DriverQueryCommand):
         cmd = "LOGSET?"
 
         @classmethod
@@ -354,8 +355,8 @@ class LS218Driver(IEEE488_CommonCommands, CommandDriver):
                     "readings": int(resp[4])
                     }
 
-#GetLoggedData is currently not working with LabView -> Parse Error: Unexpected lookahead type EOF
-    class GetLoggedData(QueryCommand):
+    #GetLoggedData is currently not working with LabView -> Parse Error: Unexpected lookahead type EOF
+    class GetLoggedData(DriverQueryCommand):
         cmd = "LOGVIEW?"
         arguments = "{}, {}"
 
@@ -376,7 +377,7 @@ class LS218Driver(IEEE488_CommonCommands, CommandDriver):
                     "source": int(resp[4])
                     }
 
-    class GetLinearEquationData(QueryCommand):
+    class GetLinearEquationData(DriverQueryCommand):
         cmd = "LRDG?"
         arguments = "{}"
 
@@ -388,7 +389,7 @@ class LS218Driver(IEEE488_CommonCommands, CommandDriver):
         def process_result(cls, driver, cmd, pars, result):
             return(float(result))
 
-    class GetMinMaxInputParameters(QueryCommand):
+    class GetMinMaxInputParameters(DriverQueryCommand):
         cmd = "MNMX?"
         arguments = "{}"
 
@@ -400,7 +401,7 @@ class LS218Driver(IEEE488_CommonCommands, CommandDriver):
         def process_result(cls, driver, cmd, pars, result):
             return(int(result))
 
-    class GetMinMaxData(QueryCommand):
+    class GetMinMaxData(DriverQueryCommand):
         cmd = "MNMXRDG?"
         arguments = "{}"
 
@@ -415,14 +416,14 @@ class LS218Driver(IEEE488_CommonCommands, CommandDriver):
                     "max": float(resp[1])
                     }
 
-    class GetRemoteInterfaceMode(QueryCommand):
+    class GetRemoteInterfaceMode(DriverQueryCommand):
         cmd = "MODE?"
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
             return int(result)
 
-    class GetInputStatus(QueryCommand):
+    class GetInputStatus(DriverQueryCommand):
         cmd = "RDGST?"
         arguments = "{}"
 
@@ -434,7 +435,7 @@ class LS218Driver(IEEE488_CommonCommands, CommandDriver):
         def process_result(cls, driver, cmd, pars, result):
             return int(result)
 
-    class GetRelayControlParameters(QueryCommand):
+    class GetRelayControlParameters(DriverQueryCommand):
         cmd = "RELAY?"
         arguments = "{}"
 
@@ -450,14 +451,14 @@ class LS218Driver(IEEE488_CommonCommands, CommandDriver):
                     "type": int(resp[2]),
                     }
 
-    class GetRelayStatus(QueryCommand):
+    class GetRelayStatus(DriverQueryCommand):
         cmd = "RELAYST?"
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
             return int(result)
 
-    class SetDateTime(WriteCommand):
+    class SetDateTime(DriverWriteCommand):
         cmd = "DATETIME"
         arguments = "{}, {}, {}, {}, {}, {}"
 

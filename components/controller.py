@@ -1,4 +1,4 @@
-from components import Component
+from .components import Component
 from .rmq_component import RmqReq, RmqResp
 
 
