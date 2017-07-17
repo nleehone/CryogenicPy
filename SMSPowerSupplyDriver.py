@@ -1,3 +1,5 @@
+import pyvisa
+
 import components as cmp
 from components import QueryCommand, DriverQueryCommand, DriverCommandRunner
 import time
@@ -35,9 +37,21 @@ def convert_units(driver, value, units):
 class SMSQueryCommand(DriverQueryCommand):
     @classmethod
     def execute(cls, driver, cmd, pars):
-        result = driver.resource.query(cls.command(pars))
+        try:
+            result = driver.resource.query(cls.command(pars))
+        except pyvisa.errors.VisaIOError as e:
+            #print("Could not connect to the instrument. Set the instrument to remote mode and restart the driver")
+            #print(e)
+            return None
         # Remove the special \x13 character before processing
-        return cls.process_result(driver, cmd, pars, result.replace('\x13', ''))
+        result = result.replace('\x13', '')
+        print("RES", result)
+        message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
+        print(message_type, result)
+        if 'REMOTE CONTROL: DISABLED' in result or 'REMOTE CONTROL: ENABLED' in result:
+            return None
+        print(result)
+        return cls.process_result(driver, cmd, pars, result)
 
 
 class SMSPowerSupplyDriver(DriverCommandRunner):
@@ -68,10 +82,14 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
         self.tesla_per_amp = tesla_per_amp
 
     def startup(self):
-        self.tesla_per_amp = float(self.GetTeslaPerAmp.execute(self, self.GetTeslaPerAmp.cmd, []))
+        try:
+            self.tesla_per_amp = float(self.GetTeslaPerAmp.execute(self, self.GetTeslaPerAmp.cmd, []))
+            print(self.tesla_per_amp)
+        except TypeError:
+            print("Could not start the driver because the instrument was not set to remote mode")
+            quit(-1)
 
         self.resource.query(self.GetMid.command(['T']))
-        print(self.tesla_per_amp)
 
     @staticmethod
     def validate_units_T_A(units):
@@ -117,7 +135,6 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
-            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
             found = re.search(r'(ON|OFF)', result)
             if not found:
                 raise ValueError("The result '{}' did not match the expected format for the '{}' command".format(
@@ -138,19 +155,21 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
-            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
+            print(result)
             values = find_numbers(result)
             units = re.search(r'(TESLA|AMPS)', result)
             if not values or not units:
                 raise ValueError("The result '{}' did not match the expected format for the '{}' command".
                                  format(result, cls.cmd_alias))
             output = float(values[0].group())
+            print("OUTPUT VALUE:", output, units)
             units = units.group()
 
             if pars[0] == 'T' and units == 'AMPS':
                 output *= driver.tesla_per_amp
             elif pars[0] == 'A' and units == 'TESLA':  # pars[0] == 'A' is the only other option because we validated the command before this
                 output /= driver.tesla_per_amp
+            print("OUTPUT VALUE:", output)
 
             return {'Output': output,
                     'Voltage': float(values[1].group()),
@@ -172,7 +191,7 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
-            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
+
             found = re.search(r'(TESLA|AMPS)', result)
             if found:
                 units = found.group()
@@ -209,7 +228,6 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
-            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
             value = find_number(result)
             units = re.search(r'(TESLA|AMPS)', result)
             if not value or not units:
@@ -247,7 +265,6 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
-            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
             if message_type == "command_information":
                 return result
             return ""
@@ -303,7 +320,6 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
-            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
             value = find_number(result)
             if not value:
                 raise ValueError("The result '{}' did not match the expected format for the '{}' command".
@@ -335,9 +351,9 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
-            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
-            if message_type == "command_information":
-                return result
+            #message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
+            #if message_type == "command_information":
+            #    return result
             return ""
 
     class GetVoltageLimit(SMSQueryCommand):
@@ -348,7 +364,6 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
-            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
             value = find_number(result)
             if not value:
                 raise ValueError("The result '{}' did not match the expected format for the '{}' command".
@@ -371,7 +386,6 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
-            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
             value = find_number(result)
             if not value:
                 raise ValueError("The result '{}' did not match the expected format for the '{}' command".
@@ -394,7 +408,6 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
-            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
             status = re.search(r'(ON|OFF)', result)
             if not status:
                 raise ValueError("The result '{}' did not match the expected format for the '{}' command".
@@ -416,7 +429,6 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
-            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
             value = find_number(result)
             units = re.search(r'(TESLA|AMPS)', result)
             status = re.search(r'(ON|OFF)', result)
@@ -469,7 +481,6 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
-            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
             found = find_number(result)
             if found:
                 tesla_per_amp = float(found.group())
