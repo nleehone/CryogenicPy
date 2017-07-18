@@ -207,9 +207,9 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
         arguments_alias = "{}"
 
         @classmethod
-        def execute(cls, driver, cmd, pars):
+        def execute(cls, driver, cmd, pars, resource):
             value = 1 if pars[0] == 'T' else 0
-            result = driver.resource.query(cls.cmd_alias + " " + cls.arguments_alias.format(value))
+            result = resource.query(cls.cmd_alias + " " + cls.arguments_alias.format(value))
             return cls.process_result(driver, cmd, pars, result)
 
         @classmethod
@@ -258,15 +258,15 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
             SMSPowerSupplyDriver.validate_units_T_A(pars[1])
 
         @classmethod
-        def execute(cls, driver, cmd, pars):
+        def execute(cls, driver, cmd, pars, resource):
             value = convert_units(driver, float(pars[0]), pars[1])
-            result = driver.resource.query(cls.cmd_alias + " " + cls.arguments_alias.format(value))
+            result = resource.query(cls.cmd_alias + " " + cls.arguments_alias.format(value))
             return cls.process_result(driver, cmd, pars, result)
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
-            #if message_type == "command_information":
-            #    return result
+            if message_type == "command_information":
+                return result
             return ""
 
     class GetSetpoint(GetMid):
@@ -276,7 +276,7 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
         """
         cmd = "SETP?"
 
-    class SetSetpoint(SetMid):
+    class SetSetpoing(SetMid):
         """The set setpoint command sets the MID value in order to get around the limitation of not being able to
         query the setpoint on the SMS120C. This command is purely for clarity when using the driver and does exactly the
         same thing that "SET MID" does
@@ -300,7 +300,7 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
             SMSPowerSupplyDriver.validate_ramp_to(pars[0])
 
         @classmethod
-        def execute(cls, driver, cmd, pars):
+        def execute(cls, driver, cmd, pars, method):
             result = driver.resource.write(cls.command(pars))
             return cls.process_result(driver, cmd, pars, '')
 
@@ -342,11 +342,11 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
             SMSPowerSupplyDriver.validate_units_T_A(pars[1])
 
         @classmethod
-        def execute(cls, driver, cmd, pars):
+        def execute(cls, driver, cmd, pars, resource):
             value = float(pars[0])
             if pars[1] == 'T':
                 value /= driver.tesla_per_amp
-            result = driver.resource.query(cls.cmd_alias + " " + cls.arguments_alias.format(value))
+            result = resource.query(cls.cmd_alias + " " + cls.arguments_alias.format(value))
             return cls.process_result(driver, cmd, pars, result)
 
         @classmethod

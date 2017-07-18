@@ -1,26 +1,19 @@
 class State(object):
-    def __init__(self, component):
-        self.component = component
-        self.done = False
-
-    def run(self):
+    @staticmethod
+    def run(parent):
         raise NotImplementedError()
 
-    def next(self, condition):
+    @staticmethod
+    def next():
         raise NotImplementedError()
 
 
 class StateMachine(object):
-    def __init__(self, component, initial_state):
-        self.component = component
-        self.current_state = initial_state(self.component)
-        self.condition = None
+    def __init__(self, parent, initial_state):
+        self.parent = parent
+        self.current_state = initial_state
 
     def run(self):
         while True:
-            self.current_state.run()
-            if self.current_state.done or self.condition is not None:
-                state, used_condition = self.current_state.next(self.condition)
-                self.current_state = state(self.component)
-                if used_condition:
-                    self.condition = None
+            self.current_state.run(self.parent)
+            self.current_state = self.current_state.next()
