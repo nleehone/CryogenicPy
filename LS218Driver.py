@@ -89,6 +89,10 @@ class LS218Driver(IEEE488_CommonCommands, DriverCommandRunner):
         except ValueError as e:
             raise ValueError("Input group must be {}, instead got {}".format(['A', 'B'], input))
 
+    def __init__(self, driver_queue, driver_params, **kwargs):
+        super().__init__(driver_queue, driver_params, **kwargs)
+        self.run_server_thread()
+
     class GetSensorReading(DriverQueryCommand):
         cmd = "SRDG?"
         arguments = "{}"

@@ -1,6 +1,6 @@
 from LS218Driver import LS218Driver
 from SMSPowerSupplyDriver import SMSPowerSupplyDriver
-from components import ControllerComponent, logger, QueryCommand
+from components import ControllerComponent, logger, QueryCommand, WriteCommand
 import time
 import json
 import logging
@@ -11,31 +11,57 @@ from state_machine.state_machine import StateMachine, State
 
 
 class StateInitialize(State):
-    @staticmethod
-    def next():
-        return StateInitialize
+    def next(self, condition):
+        return StateIdle, False
 
-    @staticmethod
-    def run(controller):
-        controller.get_magnet_temperature()
-        print(controller.magnet_temperature)
-        print(controller.safe_temperature())
+    def run(self):
+        self.component.get_magnet_temperature()
+        self.done = True
+        print("Init")
 
 
 class StateIdle(State):
-    @staticmethod
-    def next():
-        return StateIdle
+    def next(self, condition):
+        state = {"start_ramp": StateRampInit}.get(condition, StateIdle)
+        return state, state != StateIdle
 
-    @staticmethod
-    def run(controller):
-        controller.get_magnet_temperature()
+    def run(self):
+        self.component.get_persistent_mode_heater_switch_temperature()
+        self.component.get_magnet_temperature()
+        self.component.get_field()
         print("Idle")
+
+
+class StateRampInit(State):
+    def next(self, condition):
+        return StateWaitPersistentMode, False
+
+    def run(self):
+        self.component.set_persistent_mode_heater_switch(1)
+        print("RampInit")
+        self.done = True
+
+
+class StateWaitPersistentMode(State):
+    def __init__(self, component):
+        super().__init__(component)
+        self.switch_on_time = time.time()
+
+    def next(self, condition):
+        state = {"stop_ramp": StateRampDone}.get(condition, StateWaitPersistentMode)
+        return state, state != StateWaitPersistentMode
+
+    def run(self):
+        temperature = self.component.get_persistent_mode_heater_switch_temperature()
+        self.component.get_magnet_temperature()
+        self.component.get_field()
+        print(time.time() - self.switch_on_time)
+        print("Wait Persistent Mode Temperature:", temperature)
 
 
 class StateQuenched(State):
     @staticmethod
-    def next():
+    def next(condition):
         return StateIdle
 
     @staticmethod
@@ -43,49 +69,30 @@ class StateQuenched(State):
         print("Quenched")
 
 
-class StateRampInit(State):
-    @staticmethod
-    def next():
-        return StateRamping
-
-    @staticmethod
-    def run(controller):
-        print("RampInit")
-
-
 class StateRampDone(State):
-    @staticmethod
-    def next():
-        return StateIdle
+    def next(self, condition):
+        return StateIdle, False
 
-    @staticmethod
-    def run(controller):
+    def run(self):
+        self.component.set_persistent_mode_heater_switch(0)
         print("RampDone")
+        self.done = True
 
 
 class StateRamping(State):
     @staticmethod
-    def next():
-        return StateRampDone
+    def next(condition):
+        state = {'stop_ramp': StateRampDone}.get(condition, StateRamping)
+        return state
 
     @staticmethod
     def run(controller):
-        while not controller.at_setpoint:
-            magnet_temperature = controller.get_magnet_temperature()
-            if controller.safe_temperature(magnet_temperature):
-                pass
+        #while not controller.at_setpoint:
+        #    magnet_temperature = controller.get_magnet_temperature()
+        #    if controller.safe_temperature(magnet_temperature):
+        #        pass
 
         print("Ramping")
-
-
-class StateQuenched(State):
-    @staticmethod
-    def next():
-        return StateIdle
-
-    @staticmethod
-    def run(controller):
-        print("Quenched")
 
 
 class Measurement(object):
@@ -109,6 +116,7 @@ class MagnetController(ControllerComponent):
         self.power_supply_driver = config['power_supply_driver']
         self.magnet_temperature_driver = config['magnet_temperature_driver']
         self.hall_sensor_driver = config['hall_sensor_driver']
+        self.persistent_heater_switch_temperature_channel = config['persistent_heater_switch_temperature_channel']
 
         self.magnet_temperature_channel = config['magnet_temperature_channel']
         self.magnet_safe_temperatures = np.array(json.loads(config['magnet_safe_temperatures'])).reshape((-1, 2))
@@ -117,8 +125,12 @@ class MagnetController(ControllerComponent):
 
         self.magnet_temperature = Measurement()
         self.field = Measurement()
+        self.persistent_mode_heater_switch_temperature = Measurement()
 
         self.state_machine = StateMachine(self, StateInitialize)
+
+        self.run_client_thread()
+        self.run_server_thread()
 
     def send_message_and_get_reply(self, queue, command):
         self.send_direct_message(queue, json.dumps({"CMD": command}))
@@ -151,10 +163,33 @@ class MagnetController(ControllerComponent):
         self.field.t0 = val['t0']
         self.field.t1 = val['t1']
         self.field.value = val['result']
-        print(self.field)
 
     def get_mid(self):
         return self.send_message_and_get_reply(self.power_supply_driver, SMSPowerSupplyDriver.GetMid.raw_command(['A']))
+
+    def set_setpoint(self, setpoint):
+        return self.send_message_and_get_reply(self.power_supply_driver,
+                                               SMSPowerSupplyDriver.SetSetpoint.raw_command([setpoint, 'T']))
+
+    def set_ramp_rate(self, ramp_rate):
+        return self.send_message_and_get_reply(self.power_supply_driver,
+                                               SMSPowerSupplyDriver.SetRampRate.raw_command([ramp_rate, 'T']))
+
+    def ramp(self, ramp_status):
+        self.state_machine.condition = ['stop_ramp', 'start_ramp'][int(ramp_status)]
+
+    def set_persistent_mode_heater_switch(self, on_off):
+        # On = 1, Off = 0
+        self.send_message_and_get_reply(self.power_supply_driver,
+                                        SMSPowerSupplyDriver.SetPersistentHeaterStatus.raw_command([on_off]))
+
+    def get_persistent_mode_heater_switch_temperature(self):
+        val = self.send_message_and_get_reply(self.magnet_temperature_driver,
+                                        LS218Driver.GetKelvinReading.raw_command([self.persistent_heater_switch_temperature_channel]))[0]
+        self.persistent_mode_heater_switch_temperature.t0 = val['t0']
+        self.persistent_mode_heater_switch_temperature.t1 = val['t1']
+        self.persistent_mode_heater_switch_temperature.value = val['result']
+        return self.persistent_mode_heater_switch_temperature.value
 
     def process_message(self, message):
         commands = message['CMD']
@@ -187,6 +222,38 @@ class MagnetController(ControllerComponent):
         @classmethod
         def execute(cls, controller, cmd, pars):
             return controller.magnet_temperature.value
+
+    class SetSetpoint(WriteCommand):
+        cmd = "SetSetpoint"
+        arguments = "{}"
+
+        @classmethod
+        def execute(cls, controller, cmd, pars):
+            return controller.set_setpoint(*pars)
+
+    class SetRampRate(WriteCommand):
+        cmd = "SetRampRate"
+        arguments = "{}"
+
+        @classmethod
+        def execute(cls, controller, cmd, pars):
+            return controller.set_ramp_rate(*pars)
+
+    class Ramp(WriteCommand):
+        cmd = "Ramp"
+        arguments = "{}"
+
+        @classmethod
+        def execute(cls, controller, cmd, pars):
+            return controller.ramp(*pars)
+
+    class GetPersistentHeaterTemperature(QueryCommand):
+        cmd = "GetPersistentHeaterTemperature"
+        arguments = ""
+
+        @classmethod
+        def execute(cls, controller, cmd, pars):
+            return controller.persistent_mode_heater_switch_temperature.value
 
 
 if __name__ == '__main__':

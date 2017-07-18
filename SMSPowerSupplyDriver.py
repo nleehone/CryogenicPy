@@ -76,6 +76,7 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
         super().__init__(driver_queue, driver_params, **kwargs)
         self.tesla_per_amp = 0
 
+        self.run_server_thread()
         self.startup()
 
     def set_tesla_per_amp(self, tesla_per_amp):
