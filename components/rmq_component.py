@@ -147,3 +147,10 @@ class RmqReq(RmqComponent):
         """User-supplied function that processes the direct-reply events"""
         self.server_response = body
         self.processed = True
+
+    def get_response(self):
+        while self.server_response is None:
+            pass
+        resp = json.loads(self.server_response.decode('utf-8'))
+        self.server_response = None
+        return resp
