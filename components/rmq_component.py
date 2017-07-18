@@ -3,6 +3,7 @@ import time
 import json
 import threading
 import logging
+from queue import Queue, PriorityQueue
 
 
 logging.basicConfig(level=logging.INFO)
@@ -29,6 +30,9 @@ class RmqResp(RmqComponent):
     def __init__(self, server_queue, **kwargs):
         super().__init__(**kwargs)
         self.response_server_queue = server_queue
+        self.response_thread_queue = Queue()
+
+    def run_server_thread(self):
         thread = threading.Thread(target=self.setup_and_run_server)
         thread.start()
 
@@ -101,32 +105,46 @@ class RmqReq(RmqComponent):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.server_response = None
+        self.request_thread_queue = Queue()
+
+    def run_client_thread(self):
+        thread = threading.Thread(target=self.setup_client)
+        thread.start()
+
+    def setup_client(self):
         self.client_connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
         logger.info('Client Connection opened')
         logger.info('Creating a new client channel')
         self.client_channel = self.client_connection.channel()
 
-        thread = threading.Thread(target=self.setup_client)
-        thread.start()
-
-    def setup_client(self):
         # Initialise queues here - this is a user-supplied function
         self.init_client_queues()
 
+        self.processed = False
+
+        while True:
+            queue_name, message = self.request_thread_queue.get()
+
+            """Wrapper for the basic_publish method specifically for sending a direct reply-to message"""
+            self.client_channel.basic_publish(exchange='',
+                                              routing_key=queue_name,
+                                              body=message,
+                                              properties=pika.BasicProperties(
+                                                  reply_to='amq.rabbitmq.reply-to'
+                                              ))
+            self.processed = False
+
+            while not self.processed:
+                self.client_connection.process_data_events(time_limit=0)
+
     def send_direct_message(self, queue_name, message):
-        """Wrapper for the basic_publish method specifically for sending a direct reply-to message"""
-        self.client_channel.basic_publish(exchange='',
-                                   routing_key=queue_name,
-                                   body=message,
-                                   properties=pika.BasicProperties(
-                                       reply_to='amq.rabbitmq.reply-to'
-                                   ))
+        self.request_thread_queue.put((queue_name, message))
 
     def init_client_queues(self):
         """Create the direct-reply consumer"""
         self.client_channel.basic_consume(self.process_direct_reply, queue='amq.rabbitmq.reply-to', no_ack=True)
-        self.client_channel.start_consuming()
 
     def process_direct_reply(self, channel, method, properties, body):
         """User-supplied function that processes the direct-reply events"""
         self.server_response = body
+        self.processed = True

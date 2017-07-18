@@ -19,7 +19,7 @@ class StateInitialize(State):
     def run(controller):
         controller.get_magnet_temperature()
         print(controller.magnet_temperature)
-        print(controller.safe_temperature())
+        controller.get_field()
 
 
 class StateIdle(State):
@@ -119,6 +119,8 @@ class MagnetController(ControllerComponent):
         self.field = Measurement()
 
         self.state_machine = StateMachine(self, StateInitialize)
+
+        self.run_client_thread()
 
     def send_message_and_get_reply(self, queue, command):
         self.send_direct_message(queue, json.dumps({"CMD": command}))
