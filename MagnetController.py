@@ -160,6 +160,7 @@ class MagnetController(ControllerComponent):
     def get_field(self):
         val = self.send_message_and_get_reply(self.power_supply_driver,
                                               SMSPowerSupplyDriver.GetOutput.raw_command(['T']))[0]
+        print(val)
         self.field.t0 = val['t0']
         self.field.t1 = val['t1']
         self.field.value = val['result']
@@ -213,6 +214,9 @@ class MagnetController(ControllerComponent):
 
         @classmethod
         def execute(cls, controller, cmd, pars):
+            print(controller.field)
+            if controller.field.value == None:
+                print(controller.field)
             return controller.field.value
 
     class GetMagnetTemperature(QueryCommand):

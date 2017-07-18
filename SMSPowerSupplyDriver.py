@@ -208,9 +208,9 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
         arguments_alias = "{}"
 
         @classmethod
-        def execute(cls, driver, cmd, pars, resource):
+        def execute(cls, driver, cmd, pars):
             value = 1 if pars[0] == 'T' else 0
-            result = resource.query(cls.cmd_alias + " " + cls.arguments_alias.format(value))
+            result = driver.resource.query(cls.cmd_alias + " " + cls.arguments_alias.format(value))
             return cls.process_result(driver, cmd, pars, result)
 
         @classmethod
@@ -259,15 +259,15 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
             SMSPowerSupplyDriver.validate_units_T_A(pars[1])
 
         @classmethod
-        def execute(cls, driver, cmd, pars, resource):
+        def execute(cls, driver, cmd, pars):
             value = convert_units(driver, float(pars[0]), pars[1])
-            result = resource.query(cls.cmd_alias + " " + cls.arguments_alias.format(value))
+            result = driver.resource.query(cls.cmd_alias + " " + cls.arguments_alias.format(value))
             return cls.process_result(driver, cmd, pars, result)
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
-            if message_type == "command_information":
-                return result
+            #if message_type == "command_information":
+            #    return result
             return ""
 
     class GetSetpoint(GetMid):
@@ -343,11 +343,11 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
             SMSPowerSupplyDriver.validate_units_T_A(pars[1])
 
         @classmethod
-        def execute(cls, driver, cmd, pars, resource):
+        def execute(cls, driver, cmd, pars):
             value = float(pars[0])
             if pars[1] == 'T':
                 value /= driver.tesla_per_amp
-            result = resource.query(cls.cmd_alias + " " + cls.arguments_alias.format(value))
+            result = driver.resource.query(cls.cmd_alias + " " + cls.arguments_alias.format(value))
             return cls.process_result(driver, cmd, pars, result)
 
         @classmethod
