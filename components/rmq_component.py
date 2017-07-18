@@ -120,8 +120,6 @@ class RmqReq(RmqComponent):
         # Initialise queues here - this is a user-supplied function
         self.init_client_queues()
 
-        self.processed = False
-
         while True:
             queue_name, message = self.request_thread_queue.get()
 
@@ -132,8 +130,9 @@ class RmqReq(RmqComponent):
                                               properties=pika.BasicProperties(
                                                   reply_to='amq.rabbitmq.reply-to'
                                               ))
-            self.processed = False
 
+            # Process events until we get a reply back from the server
+            self.processed = False
             while not self.processed:
                 self.client_connection.process_data_events(time_limit=0)
 
