@@ -277,7 +277,7 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
         """
         cmd = "SETP?"
 
-    class SetSetpoing(SetMid):
+    class SetSetpoint(SetMid):
         """The set setpoint command sets the MID value in order to get around the limitation of not being able to
         query the setpoint on the SMS120C. This command is purely for clarity when using the driver and does exactly the
         same thing that "SET MID" does
