@@ -4,6 +4,8 @@ import json
 import threading
 import logging
 
+from queue import Queue, PriorityQueue
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -29,13 +31,15 @@ class RmqResp(RmqComponent):
     def __init__(self, server_queue, **kwargs):
         super().__init__(**kwargs)
         self.response_server_queue = server_queue
-        thread = threading.Thread(target=self.setup_and_run_server)
-        thread.start()
 
     def init_server_queues(self):
         self.server_channel.queue_delete(queue=self.response_server_queue)
         self.server_channel.queue_declare(queue=self.response_server_queue)
         logger.info('Declared queue: {}'.format(self.response_server_queue))
+
+    def run_resp_server(self):
+        thread = threading.Thread(target=self.setup_and_run_server)
+        thread.start()
 
     def setup_and_run_server(self):
         self.server_connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
@@ -101,15 +105,22 @@ class RmqReq(RmqComponent):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.server_response = None
+
+        #self.init_client_queues()
+
+        #thread = threading.Thread(target=self.setup_client)
+        #thread.start()
+
+    def run_request_client(self):
+        thread = threading.Thread(target=self.setup_client)
+        thread.start()
+
+    def setup_client(self):
         self.client_connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
         logger.info('Client Connection opened')
         logger.info('Creating a new client channel')
         self.client_channel = self.client_connection.channel()
 
-        thread = threading.Thread(target=self.setup_client)
-        thread.start()
-
-    def setup_client(self):
         # Initialise queues here - this is a user-supplied function
         self.init_client_queues()
 

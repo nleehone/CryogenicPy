@@ -116,6 +116,8 @@ class CommandRunner(RmqResp):
         self.all_commands = {**self.get_commands, **self.set_commands}
         self.command_delay = command_delay
 
+        self.run_resp_server()
+
     def split_cmd(self, cmd):
         """Split the command string into a command and a set of parameters"""
         command, *pars = list(filter(None, map(lambda x: x.strip(), re.split(',| |\?', cmd))))
