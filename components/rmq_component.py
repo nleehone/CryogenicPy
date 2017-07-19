@@ -9,6 +9,7 @@ from queue import Queue, PriorityQueue
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 logger.info('Current pika version is {}'.format(pika.__version__))
+logger.disabled = True
 
 
 class RmqComponent(object):
@@ -84,7 +85,7 @@ class RmqResp(RmqComponent):
                                                               no_ack=True)
             # Return as soon as we get a valid message
             if method is not None:
-                print(method, properties, body)
+                #print(method, properties, body)
                 message = json.loads(body.decode('utf-8'))
                 logger.info('Received a message: {} | {}'.format(body, properties.reply_to))
                 break
