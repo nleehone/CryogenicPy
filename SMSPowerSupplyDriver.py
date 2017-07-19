@@ -301,7 +301,7 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
             SMSPowerSupplyDriver.validate_ramp_to(pars[0])
 
         @classmethod
-        def execute(cls, driver, cmd, pars, method):
+        def execute(cls, driver, cmd, pars):
             result = driver.resource.write(cls.command(pars))
             return cls.process_result(driver, cmd, pars, '')
 
@@ -402,6 +402,19 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
             return ""
+
+    class GetRampStatus(SMSQueryCommand):
+        cmd = "RAMPST"
+        arguments = ""
+        cmd_alias = "RAMP STATUS"
+        arguments_alias = ""
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            if "RAMPING" in result:
+                return 1
+            else:
+                return 0
 
     class GetPauseState(SMSQueryCommand):
         cmd = "PAUSE?"

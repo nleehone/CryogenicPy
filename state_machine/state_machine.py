@@ -9,6 +9,9 @@ class State(object):
     def next(self, condition):
         raise NotImplementedError()
 
+    def setup(self):
+        pass
+
 
 class StateMachine(object):
     def __init__(self, component, initial_state):
@@ -22,5 +25,6 @@ class StateMachine(object):
             if self.current_state.done or self.condition is not None:
                 state, used_condition = self.current_state.next(self.condition)
                 self.current_state = state(self.component)
+                self.current_state.setup()
                 if used_condition:
                     self.condition = None
