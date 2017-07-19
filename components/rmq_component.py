@@ -3,6 +3,7 @@ import time
 import json
 import threading
 import logging
+from queue import Queue, PriorityQueue
 
 
 logging.basicConfig(level=logging.INFO)
@@ -17,51 +18,41 @@ class RmqComponent(object):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.done = False   # Flag to tell if the thread should be shut down
-        thread = threading.Thread(target=self.setup_and_run)
-        thread.start()
-
-    def setup_and_run(self):
-        self.connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
-        logger.info('Connection opened')
-        logger.info('Creating a new channel')
-        self.channel = self.connection.channel()
-
-        # Initialise queues here - this is a user-supplied function
-        self.init_queues()
-
-        self.run()
-
-    def run(self):
-        # Immediately exit if this is the base RMQ class
-        self.channel.close()
-        logger.info('Channel closed')
-        self.connection.close()
-        logger.info('Connection closed')
 
     def close(self):
         # Request that the component close in the next iteration of the run loop
-        logger.info('Requesting close')
+        logger.info('Requesting server close')
         self.done = True
-
-    def init_queues(self):
-        pass
-
-    def process_message(self, message):
-        return message
 
 
 class RmqResp(RmqComponent):
     """The RmqResp class represents a response server, which sends responses to the client"""
-    def __init__(self, queue_name, **kwargs):
-        self.response_server_queue = queue_name
+    def __init__(self, server_queue, **kwargs):
         super().__init__(**kwargs)
+        self.response_server_queue = server_queue
+        self.response_thread_queue = Queue()
 
-    def init_queues(self):
-        self.channel.queue_delete(queue=self.response_server_queue)
-        self.channel.queue_declare(queue=self.response_server_queue)
+    def run_server_thread(self):
+        thread = threading.Thread(target=self.setup_and_run_server)
+        thread.start()
+
+    def init_server_queues(self):
+        self.server_channel.queue_delete(queue=self.response_server_queue)
+        self.server_channel.queue_declare(queue=self.response_server_queue)
         logger.info('Declared queue: {}'.format(self.response_server_queue))
 
-    def run(self):
+    def setup_and_run_server(self):
+        self.server_connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+        logger.info('Server Connection opened')
+        logger.info('Creating a new server channel')
+        self.server_channel = self.server_connection.channel()
+
+        # Initialise queues here - this is a user-supplied function
+        self.init_server_queues()
+
+        self.run_response_server()
+
+    def run_response_server(self):
         try:
             while not self.done:
                 # Wait for next message from client
@@ -70,10 +61,13 @@ class RmqResp(RmqComponent):
                 response = self.process_message(message)
                 self.send_response(response, properties)
         finally:
-            self.channel.close()
-            logger.info('Channel closed')
-            self.connection.close()
-            logger.info('Connection closed')
+            self.server_channel.close()
+            logger.info('Server Channel closed')
+            self.server_connection.close()
+            logger.info('Server Connection closed')
+
+    def process_message(self, message):
+        return None
 
     def receive_message(self):
         """
@@ -84,9 +78,9 @@ class RmqResp(RmqComponent):
         properties = None
         while not self.done:
             # Process message queue events, returning as soon as possible
-            self.connection.process_data_events(time_limit=0)
+            self.server_connection.process_data_events(time_limit=0)
 
-            method, properties, body = self.channel.basic_get(queue=self.response_server_queue,
+            method, properties, body = self.server_channel.basic_get(queue=self.response_server_queue,
                                                               no_ack=True)
             # Return as soon as we get a valid message
             if method is not None:
@@ -99,7 +93,7 @@ class RmqResp(RmqComponent):
 
     def send_response(self, response, properties):
         logger.info('Sending response: {}'.format(json.dumps(response)))
-        self.channel.basic_publish('', routing_key=properties.reply_to, body=json.dumps(response))
+        self.server_channel.basic_publish('', routing_key=properties.reply_to, body=json.dumps(response))
 
 
 class RmqReq(RmqComponent):
@@ -108,20 +102,48 @@ class RmqReq(RmqComponent):
 
     Messages are sent via send_direct_message, and are received via process_direct_reply
     """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.server_response = None
+        self.request_thread_queue = Queue()
+
+    def run_client_thread(self):
+        thread = threading.Thread(target=self.setup_client)
+        thread.start()
+
+    def setup_client(self):
+        self.client_connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+        logger.info('Client Connection opened')
+        logger.info('Creating a new client channel')
+        self.client_channel = self.client_connection.channel()
+
+        # Initialise queues here - this is a user-supplied function
+        self.init_client_queues()
+
+        while True:
+            queue_name, message = self.request_thread_queue.get()
+
+            """Wrapper for the basic_publish method specifically for sending a direct reply-to message"""
+            self.client_channel.basic_publish(exchange='',
+                                              routing_key=queue_name,
+                                              body=message,
+                                              properties=pika.BasicProperties(
+                                                  reply_to='amq.rabbitmq.reply-to'
+                                              ))
+
+            # Process events until we get a reply back from the server
+            self.processed = False
+            while not self.processed:
+                self.client_connection.process_data_events(time_limit=0)
 
     def send_direct_message(self, queue_name, message):
-        """Wrapper for the basic_publish method specifically for sending a direct reply-to message"""
-        self.channel.basic_publish(exchange='',
-                                   routing_key=queue_name,
-                                   body=message,
-                                   properties=pika.BasicProperties(
-                                       reply_to='amq.rabbitmq.reply-to'
-                                   ))
+        self.request_thread_queue.put((queue_name, message))
 
-    def init_queues(self):
+    def init_client_queues(self):
         """Create the direct-reply consumer"""
-        self.channel.basic_consume(self.process_direct_reply, queue='amq.rabbitmq.reply-to', no_ack=True)
+        self.client_channel.basic_consume(self.process_direct_reply, queue='amq.rabbitmq.reply-to', no_ack=True)
 
     def process_direct_reply(self, channel, method, properties, body):
         """User-supplied function that processes the direct-reply events"""
-        pass
+        self.server_response = body
+        self.processed = True

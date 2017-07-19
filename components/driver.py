@@ -1,9 +1,8 @@
 from .rmq_component import RmqResp, logger
-from .components import Component
 import visa
 
 
-class Driver(RmqResp, Component):
+class Driver(object):
     """Single point of communication with the instrument
 
     Having a common point of communication prevents multiple parts of the system from
@@ -11,9 +10,9 @@ class Driver(RmqResp, Component):
 
     It is up to the user to make sure that only one instance of the Driver is ever running.
     """
-    def __init__(self, driver_queue, driver_params, **kwargs):
+    def __init__(self, driver_params, **kwargs):
         self.create_resource(driver_params)
-        super().__init__(driver_queue, **kwargs)
+        super().__init__(**kwargs)
 
     def create_resource(self, driver_params):
         rm = visa.ResourceManager(driver_params.get('library', ''))
@@ -38,19 +37,3 @@ class Driver(RmqResp, Component):
                 'CR': self.resource.CR,
                 'LF': self.resource.LF,
             }.get(driver_params['termination'], driver_params['termination'])
-
-    def process_message(self, message):
-        commands = message['CMD']
-        results = []
-        errors = []
-        try:
-            for command in commands.split(';'):
-                result, error = self.execute_command(command)
-                errors.append(error if error is not None else "")
-                results.append(result if result is not None else "")
-        except AttributeError:
-            logger.exception("Received message with improper format")
-        return results
-
-    def execute_command(self, command):
-        pass

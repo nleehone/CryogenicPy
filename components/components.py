@@ -24,17 +24,3 @@ class Component(object):
         handler.setFormatter(formatter)
 
         self.logger.addHandler(handler)
-
-
-class ControllerComponent(rmq.RmqReq, Component):
-    def __init__(self, driver_queue, controller_queue, **kwargs):
-        super().__init__(**kwargs)
-        self.driver_queue = driver_queue
-        self.controller_queue = controller_queue
-
-    def init_queues(self):
-        super().init_queues()
-        self.channel.queue_declare(queue=self.controller_queue)
-
-    def process(self):
-        pass
