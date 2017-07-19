@@ -19,12 +19,11 @@ class StateInitialize(State):
         return StateIdle, False
 
     def run(self):
-        self.component.get_persistent_mode_heater_switch_temperature()
-        self.component.get_magnet_temperature()
-        self.component.get_field()
-        #self.component.get_magnet_temperature()
         self.done = True
         print("Init")
+
+
+
 
 
 class StateIdle(State):
