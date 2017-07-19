@@ -162,6 +162,11 @@ class ComponentThread(threading.Thread):
         pass
 
 
+class Reply(object):
+    def __init__(self):
+        self.value = None
+
+
 class MagnetController(ControllerComponent):
     def __init__(self, config):
         super().__init__(config['controller_queue'])
@@ -215,8 +220,14 @@ class MagnetController(ControllerComponent):
         return val['result'] == 0
 
     def get_magnet_temperature(self):
-        val = self.send_message_and_get_reply(self.magnet_monitor, self.magnet_temperature_driver,
-                                               LS218Driver.GetKelvinReading.raw_command([self.magnet_temperature_channel]))[0]
+        reply = Reply()
+        self.magnet_monitor.send_direct_message_reply(self.magnet_temperature_driver,
+                                                      json.dumps({"CMD": LS218Driver.GetKelvinReading.raw_command([self.magnet_temperature_channel])}),
+                                                      reply)
+        print("TEMP", reply.value)
+        val = reply.value[0]
+        #val = self.send_message_and_get_reply(self.magnet_monitor, self.magnet_temperature_driver,
+        #                                       LS218Driver.GetKelvinReading.raw_command([self.magnet_temperature_channel]))[0]
         #print("MAG T", val)
         self.magnet_temperature.t0 = val['t0']
         self.magnet_temperature.t1 = val['t1']
@@ -231,9 +242,12 @@ class MagnetController(ControllerComponent):
 
     def get_field(self):
         #print("FIELD")
-        val = self.send_message_and_get_reply(self.power_supply_monitor, self.power_supply_driver,
-                                              SMSPowerSupplyDriver.GetOutput.raw_command(['T']))[0]
-        #print("FIELD", val)
+        reply = Reply()
+        val = self.power_supply_monitor.send_direct_message_reply(self.power_supply_driver,
+                                                                  json.dumps({"CMD": SMSPowerSupplyDriver.GetOutput.raw_command(['T'])}),
+                                                                  reply)
+        val = reply.value[0]
+        print("FIELD", val)
         self.field.t0 = val['t0']
         self.field.t1 = val['t1']
         self.field.value = val['result']

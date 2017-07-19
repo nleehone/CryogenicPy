@@ -122,8 +122,8 @@ class RmqReq(RmqComponent):
         self.init_client_queues()
 
         while True:
-            queue_name, message = self.request_thread_queue.get()
-
+            queue_name, message, reply = self.request_thread_queue.get()
+            print("FOO", queue_name, message, reply)
             """Wrapper for the basic_publish method specifically for sending a direct reply-to message"""
             self.client_channel.basic_publish(exchange='',
                                               routing_key=queue_name,
@@ -136,9 +136,18 @@ class RmqReq(RmqComponent):
             self.processed = False
             while not self.processed:
                 self.client_connection.process_data_events(time_limit=0)
+                if reply is not None:
+                    if self.server_response is None:
+                        continue
+                    reply.value = json.loads(self.server_response.decode('utf-8'))
+            self.request_thread_queue.task_done()
 
     def send_direct_message(self, queue_name, message):
-        self.request_thread_queue.put((queue_name, message))
+        self.request_thread_queue.put((queue_name, message, None))
+
+    def send_direct_message_reply(self, queue_name, message, reply):
+        self.request_thread_queue.put((queue_name, message, reply))
+        self.request_thread_queue.join()
 
     def init_client_queues(self):
         """Create the direct-reply consumer"""
