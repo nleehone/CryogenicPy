@@ -23,9 +23,6 @@ class StateInitialize(State):
         print("Init")
 
 
-
-
-
 class StateIdle(State):
     def next(self, condition):
         state = {"start_ramp": StateRampInit}.get(condition, StateIdle)
@@ -194,6 +191,8 @@ class MagnetController(ControllerComponent):
         #self.run_client_thread()
         self.run_server_thread()
 
+        self.at_setpoint_and_settled = False
+
     def send_message_and_get_reply(self, driver, queue, command):
         driver.send_direct_message(queue, json.dumps({"CMD": command}))
         val = driver.get_response()
@@ -209,9 +208,9 @@ class MagnetController(ControllerComponent):
         return response"""
 
     def at_setpoint(self):
-        val = self.send_message_and_get_reply(self.power_supply_monitor, self.power_supply_driver,
+        ramping = self.send_message_and_get_reply(self.power_supply_monitor, self.power_supply_driver,
                                               SMSPowerSupplyDriver.GetRampStatus.raw_command([]))[0]
-        return val['result'] == 0
+        return ramping['result'] == 0
 
     def get_magnet_temperature(self):
         val = self.send_message_and_get_reply(self.magnet_monitor, self.magnet_temperature_driver,
@@ -236,6 +235,9 @@ class MagnetController(ControllerComponent):
         self.field.t0 = val['t0']
         self.field.t1 = val['t1']
         self.field.value = val['result']
+        #self.field.t0 = 0
+        #self.field.t1 = 0
+        #self.field.value = {'Voltage': 0, 'Output': 0, 'Persistent': 0}
 
     def get_mid(self):
         return self.send_message_and_get_reply(self.power_supply_monitor, self.power_supply_driver, SMSPowerSupplyDriver.GetMid.raw_command(['A']))

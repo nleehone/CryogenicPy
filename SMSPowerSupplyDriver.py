@@ -7,6 +7,12 @@ import re
 import configparser
 import sys
 
+MESSAGE_COMMAND_INFORMATION = "command_information"
+MESSAGE_STATUS_CONFIRMATION = "status_confirmation"
+MESSAGE_FAULT_REPORT = "fault_report"
+MESSAGE_CONTRLLER_IDENTIFICATION = "controller_identification"
+MESSAGE_STATUS_UPDATE = "status_update"
+
 
 def find_number(string):
     return re.search(r'[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?', string)
@@ -34,23 +40,35 @@ def convert_units(driver, value, units):
     return value
 
 
-class SMSQueryCommand(DriverQueryCommand):
+class SMSCommand(DriverQueryCommand):
+    allowed_statuses = [MESSAGE_STATUS_CONFIRMATION, MESSAGE_STATUS_UPDATE]
+
+    @classmethod
+    def get_message_ignore_status_update(cls, driver, query):
+        received_message = False
+        # Keep trying to get messages until we get a response that is not a status update.
+        # Status updates are sent by the SMS and should not be interpreted as responses to commands.
+        while not received_message:
+            try:
+                result = driver.resource.query(query)
+            except pyvisa.errors.VisaIOError as e:
+                return None
+            # Remove the special \x13 character before processing
+            result = result.replace('\x13', '')
+            print("QUERY RES", result)
+            message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
+            print(message_type, result)
+            print(result)
+            # The MID and MAX settings return status_update results instead of the expected status_confirmation.
+            # We deal with this here by setting the received value to true and passing the result to the
+            # mid and max commands
+            if message_type in cls.allowed_statuses:
+                received_message = True
+        return result
+
     @classmethod
     def execute(cls, driver, cmd, pars):
-        try:
-            result = driver.resource.query(cls.command(pars))
-        except pyvisa.errors.VisaIOError as e:
-            #print("Could not connect to the instrument. Set the instrument to remote mode and restart the driver")
-            #print(e)
-            return None
-        # Remove the special \x13 character before processing
-        result = result.replace('\x13', '')
-        print("RES", result)
-        message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
-        print(message_type, result)
-        if 'REMOTE CONTROL: DISABLED' in result or 'REMOTE CONTROL: ENABLED' in result:
-            return None
-        print(result)
+        result = cls.get_message_ignore_status_update(driver, cls.command(pars))
         return cls.process_result(driver, cmd, pars, result)
 
 
@@ -116,23 +134,24 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
         message = message[9:]
         if message[:10] == "!!------->":
             message = message[11:]
-            message_type = "command_information"
+            message_type = MESSAGE_COMMAND_INFORMATION
         else:
             if message_head == "........":
-                message_type = "status_confirmation"
+                message_type = MESSAGE_STATUS_CONFIRMATION
             elif message_head == "=======>":
-                message_type = "fault_report"
+                message_type = MESSAGE_FAULT_REPORT
             elif message_head == "------->":
-                message_type = "command_information"
+                message_type = MESSAGE_COMMAND_INFORMATION
             elif message_head == "        ":  # 8 spaces
-                message_type = "controller identification"
+                message_type = MESSAGE_CONTRLLER_IDENTIFICATION
             else:  # Should have the format HH:MM:SS
-                message_type = "status_update"
+                message_type = MESSAGE_STATUS_UPDATE
         return message_type, message
 
-    class GetFilterStatus(SMSQueryCommand):
+    class GetFilterStatus(SMSCommand):
         cmd = "FILTER?"
         cmd_alias = "FILTER"
+        allowed_statuses = [MESSAGE_STATUS_CONFIRMATION]
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
@@ -142,17 +161,19 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
                     result, cls.cmd))
             return 0 if found.group() == 'OFF' else 1
 
-    class GetOutput(SMSQueryCommand):
+    class SetFilterStatus(SMSCommand):
+        cmd = "FILTER"
+        arguments = "{}"
+
+        @classmethod
+        def process_result(cls, driver, cmd, pars, result):
+            return ""
+
+    class GetOutput(SMSCommand):
         cmd = "OUTP?"
         arguments = "{}"
         cmd_alias = "GET OUTPUT"
         arguments_alias = ""
-
-        #@classmethod
-        #def execute(cls, driver, cmd, pars, method):
-        ##    value = convert_units(driver, float(pars[0]), pars[1])
-        #    result = method(cls.cmd_alias + " " + cls.arguments_alias.format(value))
-        #    return cls.process_result(driver, cmd, pars, result)
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
@@ -176,19 +197,12 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
                     'Voltage': float(values[1].group()),
                     'Persistent': 0}
 
-    class SetFilterStatus(SMSQueryCommand):
-        cmd = "FILTER"
-        arguments = "{}"
-
-        @classmethod
-        def process_result(cls, driver, cmd, pars, result):
-            return ""
-
-    class GetUnits(SMSQueryCommand):
+    class GetUnits(SMSCommand):
         cmd = "UNITS?"
         arguments = ""
         cmd_alias = "TESLA"
         arguments_alias = ""
+        allowed_statuses = [MESSAGE_STATUS_UPDATE]
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
@@ -201,23 +215,25 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
                 raise ValueError("The result '{}' did not match the expected format for the '{}' command".
                                  format(result, cls.cmd_alias))
 
-    class SetUnits(SMSQueryCommand):
+    class SetUnits(SMSCommand):
         cmd = "UNITS"
         arguments = "{}"
         cmd_alias = "TESLA"
         arguments_alias = "{}"
+        allowed_statuses = [MESSAGE_STATUS_UPDATE]
 
         @classmethod
         def execute(cls, driver, cmd, pars):
             value = 1 if pars[0] == 'T' else 0
-            result = driver.resource.query(cls.cmd_alias + " " + cls.arguments_alias.format(value))
+            query = cls.cmd_alias + " " + cls.arguments_alias.format(value)
+            result = cls.get_message_ignore_status_update(driver, query)
             return cls.process_result(driver, cmd, pars, result)
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
             return ""
 
-    class GetMid(SMSQueryCommand):
+    class GetMid(SMSCommand):
         cmd = "MID?"
         arguments = "{}"
         cmd_alias = "GET MID"
@@ -248,11 +264,12 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
                 else:
                     return value
 
-    class SetMid(SMSQueryCommand):
+    class SetMid(SMSCommand):
         cmd = "MID"
         arguments = "{},{}"
         cmd_alias = "SET MID"
         arguments_alias = "{}"
+        allowed_statuses = [MESSAGE_STATUS_UPDATE]
 
         @classmethod
         def _validate(cls, pars):
@@ -261,7 +278,8 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
         @classmethod
         def execute(cls, driver, cmd, pars):
             value = convert_units(driver, float(pars[0]), pars[1])
-            result = driver.resource.query(cls.cmd_alias + " " + cls.arguments_alias.format(value))
+            query = cls.cmd_alias + " " + cls.arguments_alias.format(value)
+            result = cls.get_message_ignore_status_update(driver, query)
             return cls.process_result(driver, cmd, pars, result)
 
         @classmethod
@@ -292,7 +310,7 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
         cmd = "MAX"
         cmd_alias = "SET MAX"
 
-    class SetRamp(SMSQueryCommand):
+    class SetRamp(SMSCommand):
         cmd = "RAMP"
         arguments = "{}"
 
@@ -300,16 +318,19 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
         def _validate(cls, pars):
             SMSPowerSupplyDriver.validate_ramp_to(pars[0])
 
+        # The ramp command does not return a value!
         @classmethod
         def execute(cls, driver, cmd, pars):
             result = driver.resource.write(cls.command(pars))
-            return cls.process_result(driver, cmd, pars, '')
+            #query = cls.cmd + " " + cls.arguments.format(pars)
+            #result = cls.get_message_ignore_status_update(driver, query)
+            return cls.process_result(driver, cmd, pars, result)
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
             return result
 
-    class GetRampRate(SMSQueryCommand):
+    class GetRampRate(SMSCommand):
         cmd = "RATE?"
         arguments = "{}"
         cmd_alias = "GET RATE"
@@ -332,11 +353,12 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
             else:
                 return value
 
-    class SetRampRate(SMSQueryCommand):
+    class SetRampRate(SMSCommand):
         cmd = "RATE"
         arguments = "{},{}"
         cmd_alias = "SET RAMP"
         arguments_alias = "{}"
+        allowed_statuses = [MESSAGE_STATUS_UPDATE]
 
         @classmethod
         def _validate(cls, pars):
@@ -347,21 +369,18 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
             value = float(pars[0])
             if pars[1] == 'T':
                 value /= driver.tesla_per_amp
-            result = driver.resource.query(cls.cmd_alias + " " + cls.arguments_alias.format(value))
+            query = cls.cmd_alias + " " + cls.arguments_alias.format(value)
+            result = cls.get_message_ignore_status_update(driver, query)
             return cls.process_result(driver, cmd, pars, result)
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
-            #message_type, result = SMSPowerSupplyDriver.strip_message_type(result)
-            #if message_type == "command_information":
-            #    return result
             return ""
 
-    class GetVoltageLimit(SMSQueryCommand):
+    class GetVoltageLimit(SMSCommand):
         cmd = "VLIM?"
         arguments = ""
         cmd_alias = "GET VL"
-        arguments_alias = ""
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
@@ -371,17 +390,18 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
                                  format(result, cls.cmd_alias))
             return float(value.group())
 
-    class SetVoltageLimit(SMSQueryCommand):
+    class SetVoltageLimit(SMSCommand):
         cmd = "VLIM"
         arguments = "{}"
         cmd_alias = "SET LIMIT"
         arguments_alias = "{}"
+        allowed_statuses = [MESSAGE_STATUS_UPDATE]
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
             return ""
 
-    class GetHeaterVoltage(SMSQueryCommand):
+    class GetHeaterVoltage(SMSCommand):
         cmd = "HTRV?"
         cmd_alias = "GET HV"
 
@@ -393,17 +413,18 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
                                  format(result, cls.cmd_alias))
             return float(value.group())
 
-    class SetHeaterVoltage(SMSQueryCommand):
+    class SetHeaterVoltage(SMSCommand):
         cmd = "HTRV"
         arguments = "{}"
         cmd_alias = "SET HEATER"
         arguments_alias = "{}"
+        allowed_statuses = [MESSAGE_STATUS_UPDATE]
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
             return ""
 
-    class GetRampStatus(SMSQueryCommand):
+    class GetRampStatus(SMSCommand):
         cmd = "RAMPST"
         arguments = ""
         cmd_alias = "RAMP STATUS"
@@ -416,7 +437,7 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
             else:
                 return 0
 
-    class GetPauseState(SMSQueryCommand):
+    class GetPauseState(SMSCommand):
         cmd = "PAUSE?"
         cmd_alias = "PAUSE"
 
@@ -428,7 +449,7 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
                                  format(result, cls.cmd_alias))
             return 0 if status.group() == 'OFF' else 1
 
-    class SetPauseState(SMSQueryCommand):
+    class SetPauseState(SMSCommand):
         cmd = "PAUSE"
         arguments = "{}"
 
@@ -436,7 +457,7 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
         def process_result(cls, driver, cmd, pars, result):
             return ""
 
-    class GetPersistentHeaterStatus(SMSQueryCommand):
+    class GetPersistentHeaterStatus(SMSCommand):
         cmd = "HTR?"
         arguments = "{}"
         cmd_alias = "HEATER"
@@ -460,7 +481,7 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
             return {'Status': 0 if status.group() == 'OFF' else 1,
                     'Switched off at': value}
 
-    class SetPersistentHeaterStatus(SMSQueryCommand):
+    class SetPersistentHeaterStatus(SMSCommand):
         cmd = "HTR"
         arguments = "{}"
         cmd_alias = "HEATER"
@@ -468,13 +489,15 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
 
         @classmethod
         def process_result(cls, driver, cmd, pars, result):
+            print("heater")
             return ""
 
-    class SetTeslaPerAmp(SMSQueryCommand):
+    class SetTeslaPerAmp(SMSCommand):
         cmd = "TPA"
         arguments = "{}"
         cmd_alias = "SET TPA"
         arguments_alias = "{}"
+        allowed_statuses = [MESSAGE_STATUS_UPDATE]
 
         @classmethod
         def _validate(cls, pars):
@@ -487,7 +510,7 @@ class SMSPowerSupplyDriver(DriverCommandRunner):
             print(result)
             return result
 
-    class GetTeslaPerAmp(SMSQueryCommand):
+    class GetTeslaPerAmp(SMSCommand):
         cmd = "TPA?"
         arguments = ""
         cmd_alias = "GET TPA"

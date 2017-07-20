@@ -9,8 +9,9 @@ from components.ieee488_common_commands import IEEE488_CommonCommands
 
 class LS350Driver(IEEE488_CommonCommands, DriverCommandRunner):
     def __init__(self, driver_queue, driver_params, command_delay=0.05, **kwargs):
-        super().__init__(driver_queue, driver_params, command_delay, **kwargs)
+        super().__init__(driver_queue, driver_params, command_delay=command_delay, **kwargs)
         print(self.resource.query(self.GetIdentification.command()))
+        self.run_server_thread()
 
     @staticmethod
     def validate_input_letter(input, include_all=True):

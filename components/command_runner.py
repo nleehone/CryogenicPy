@@ -156,7 +156,9 @@ class CommandRunner(RmqResp):
             # Get time before sending command to instrument
             t0 = time.time()
 
+            print('---------------', cmd, '---------------')
             result = self.all_commands[cmd].execute(self, cmd, pars)
+            print(cmd, ':', result)
 
             # Get time after receiving reply from instrument
             # Having both times allows us to get an estimate of the time at which the command ran in case the instrument
