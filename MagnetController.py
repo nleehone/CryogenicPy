@@ -133,6 +133,9 @@ class StateRamping(State):
 
         print("Ramping")
 
+    def exit(self):
+        self.component.pause('ON')
+
 
 class Measurement(object):
     def __init__(self):
@@ -262,9 +265,12 @@ class MagnetController(ControllerComponent):
         self.send_message_and_get_reply(self.power_supply, self.power_supply_driver,
                                                SMSPowerSupplyDriver.SetRamp.raw_command(['MID']))
 
-    def end_ramp(self):
+    def pause(self, pause):
         self.send_message_and_get_reply(self.power_supply, self.power_supply_driver,
-                                        SMSPowerSupplyDriver.SetPauseState.raw_command(['ON']))
+                                        SMSPowerSupplyDriver.SetPauseState.raw_command([pause]))
+
+    def end_ramp(self):
+        self.pause('ON')
         self.at_setpoint_and_settled = True
 
     def set_persistent_mode_heater_switch(self, on_off):

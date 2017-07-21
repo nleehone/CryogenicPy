@@ -27,9 +27,19 @@ class StateMachine(object):
     def run(self):
         while True:
             self.current_state.run()
-            if self.current_state.done or self.condition is not None:
+
+            if self.current_state.done:
+                self.current_state.exit()
+                # Get the next state to be run
                 state, used_condition = self.current_state.next(self.condition)
                 self.current_state = state(self.component)
                 self.current_state.enter()
+
+            elif self.condition is not None:
+                # Get the next state to be run
+                state, used_condition = self.current_state.next(self.condition)
                 if used_condition:
+                    self.current_state.exit()
+                    self.current_state = state(self.component)
+                    self.current_state.enter()
                     self.condition = None
